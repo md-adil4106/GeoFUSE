@@ -1,7 +1,7 @@
 {
   "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
-  "receipt_id": "TR-Sentinel-2A-43PGQ-T00-1789375166",
-  "generation_timestamp": "2026-09-14 08:39:26 UTC",
+  "receipt_id": "TR-Sentinel-2A-43PGQ-T08-1789374976",
+  "generation_timestamp": "2026-09-14 08:36:16 UTC",
   "project": {
     "name": "GeoFUSE SentinelGuard",
     "version": "0.1.0",
@@ -13,7 +13,7 @@
     "scale_invariance_guard": "All evidence signals are individually normalized to [0, 1] via min-max scaling to prevent scale dominance."
   },
   "tile_metadata": {
-    "tile_index": 0,
+    "tile_index": 8,
     "platform": "Sentinel-2A",
     "mgrs_tile": "43PGQ",
     "product_level": "L2A",
@@ -54,8 +54,8 @@
     "geographic_hold_out_split": "Strict Southeast Quadrant (rows 256..512, cols 256..512) - Zero Spatial Leakage"
   },
   "evidence_metrics": {
-    "fused_trust_score_pct": 86.75,
-    "mean_composite_risk": 0.1325,
+    "fused_trust_score_pct": 86.7,
+    "mean_composite_risk": 0.133,
     "pct_high_risk_pixels": 0.0,
     "weights_used": {
       "disagreement": 0.25,
@@ -66,51 +66,53 @@
     "disagreement_proxy": {
       "metric_name": "Ensemble Standard Deviation (sigma)",
       "interpretation": "Epistemic model uncertainty proxy",
-      "raw_mean": 0.0015506672207266092,
-      "raw_max": 0.010846160352230072,
+      "raw_mean": 0.0015296165365725756,
+      "raw_max": 0.011120740324258804,
       "weight": 0.25
     },
     "stability_proxy": {
       "metric_name": "Perturbation Output Variance",
       "interpretation": "Sensitivity to sensor noise and brightness shifts",
-      "raw_mean": 0.0005062422715127468,
-      "raw_max": 0.0023697754368185997,
+      "raw_mean": 0.0005052557098679245,
+      "raw_max": 0.002375883748754859,
       "weight": 0.25
     },
     "spectral_consistency": {
       "metric_name": "Absolute Delta-NDVI Error",
       "interpretation": "Radiometric fidelity of vegetation spectra",
-      "mean_delta_ndvi": 0.02145,
-      "max_delta_ndvi": 0.16478,
-      "pct_inconsistent_pixels": 7.34,
+      "mean_delta_ndvi": 0.02188,
+      "max_delta_ndvi": 0.14639,
+      "pct_inconsistent_pixels": 7.75,
       "is_consistent": true,
       "weight": 0.25
     },
     "structural_consistency": {
       "metric_name": "Sobel Gradient Correlation & Canny Alignment",
       "interpretation": "High-frequency boundary and edge fidelity",
-      "gradient_correlation_r": 0.7867,
-      "canny_edge_iou": 0.4019,
-      "canny_edge_f1": 0.5733,
+      "gradient_correlation_r": 0.7897,
+      "canny_edge_iou": 0.4091,
+      "canny_edge_f1": 0.5807,
       "weight": 0.25
     },
     "downstream_task_evaluation": {
       "task": "Building Footprint Morphological Analysis",
       "scientific_label": "Bicubic-vs-SR Footprint Agreement (No Independent GT)",
-      "bicubic_vs_sr_iou": 0.9374,
-      "bicubic_vs_sr_dice": 0.9677,
-      "high_trust_region_iou": 0.9343,
-      "low_trust_region_iou": 0.945,
-      "high_trust_area_pct": 69.96,
-      "relative_reference_hr_iou": 0.4325
+      "bicubic_vs_sr_iou": 0.9424,
+      "bicubic_vs_sr_dice": 0.9703,
+      "high_trust_region_iou": 0.9477,
+      "low_trust_region_iou": 0.9267,
+      "high_trust_area_pct": 69.14,
+      "relative_reference_hr_iou": 0.601
     }
   },
   "trust_evaluation": {
-    "status": "NOMINAL_HIGH_TRUST",
-    "confidence_level": "HIGH CONFIDENCE",
+    "status": "WARNING_LOW_TRUST",
+    "confidence_level": "MODERATE / CONDITIONAL CONFIDENCE",
     "is_trusted": true,
     "min_trust_threshold_evaluated": 86.5,
-    "summary": "Reconstruction satisfies all multi-criteria reliability benchmarks. Composite Trust Score (86.75%) exceeds nominal operational threshold (86.50%).",
-    "warnings_and_advisories": []
+    "summary": "Reconstruction is usable with caveats. One or more empirical reliability indicators triggered advisories.",
+    "warnings_and_advisories": [
+      "SPECTRAL ADVISORY: 7.8% of pixels exceed the delta-NDVI tolerance threshold (0.05). Localized vegetation reflectance may be slightly smoothed."
+    ]
   }
 }

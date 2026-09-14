@@ -1,7 +1,7 @@
 {
   "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
-  "receipt_id": "TR-Sentinel-2A-43PGQ-T00-1789375166",
-  "generation_timestamp": "2026-09-14 08:39:26 UTC",
+  "receipt_id": "TR-Sentinel-2A-43PGQ-T00-1789374976",
+  "generation_timestamp": "2026-09-14 08:36:16 UTC",
   "project": {
     "name": "GeoFUSE SentinelGuard",
     "version": "0.1.0",

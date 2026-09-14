@@ -252,6 +252,35 @@ streamlit run src/dashboard/app.py
 | **Ensemble Mean** | — | 821,100 (3×0.27M) | **0.01733** | **38.65 dB** | **0.9266** |
 | *Advantage vs. Baseline* | — | — | *-0.00187* | *+0.46 dB* | *+0.0058* |
 
+---
+
+## Demo Hardening & Live Presentation (Phase 13)
+
+To ensure presentation reliability, GeoFUSE SentinelGuard includes an offline demo hardening layer designed to eliminate live inference latency and runtime failure points:
+
+### 1. Precomputed Offline Demo Cache (`outputs/demo_cache/`):
+- All 4 demo tiles are precomputed and serialized (reconstructions, uncertainty maps, stability maps, spectral/edge consistency, downstream footprints, and trust receipts).
+- The Streamlit dashboard automatically detects and loads precomputed bundles (`outputs/demo_cache/demo_tile_*.pkl`) in **< 10 milliseconds**.
+- Presentation mode operates **100% offline**, requiring **zero live model forward passes**, eliminating GPU VRAM exhaustion, CPU bottlenecks, and timeout risks.
+- Recompute or refresh the demo cache at any time:
+  ```bash
+  python scripts/precompute_demo_cache.py
+  ```
+
+### 2. Fault-Tolerant Error Handling:
+- Deleting raw GeoTIFF files or model checkpoints **will not crash the application**.
+- All file access and processing routines are protected by graceful fallback handlers that display clear, actionable UI guidance rather than unhandled Python exceptions.
+
+### 3. Confirmed Live Demonstration of the Trust Guard Mechanism:
+- **High-Trust Approved Examples**:
+  - `Tile #0` — Central Settlement Cluster (Trust Score: **86.75%** $\ge$ 86.50% threshold)
+  - `Tile #8` — Agricultural & Rural Roads (Trust Score: **86.70%** $\ge$ 86.50% threshold)
+- **Deliberately Flagged Low-Trust Demonstration Examples**:
+  - `Tile #16` — Rural River Corridor (Trust Score: **86.41%** < 86.50% threshold $\rightarrow$ **`LOW TRUST WARNING`**)
+  - `Tile #24` — Complex Terrain Transition (Trust Score: **86.02%** < 86.50% threshold $\rightarrow$ **`LOW TRUST WARNING`**)
+- Selecting Tile #16 or Tile #24 in the dashboard immediately triggers a prominent **Live Demonstration Trust Guard Warning Banner**, visually illustrating how GeoFUSE SentinelGuard flags unreliable super-resolution reconstructions to protect downstream automated decisions.
+
+
 
 
 

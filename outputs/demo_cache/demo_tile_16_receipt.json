@@ -1,7 +1,7 @@
 {
   "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
-  "receipt_id": "TR-Sentinel-2A-43PGQ-T00-1789375166",
-  "generation_timestamp": "2026-09-14 08:39:26 UTC",
+  "receipt_id": "TR-Sentinel-2A-43PGQ-T16-1789374976",
+  "generation_timestamp": "2026-09-14 08:36:16 UTC",
   "project": {
     "name": "GeoFUSE SentinelGuard",
     "version": "0.1.0",
@@ -13,7 +13,7 @@
     "scale_invariance_guard": "All evidence signals are individually normalized to [0, 1] via min-max scaling to prevent scale dominance."
   },
   "tile_metadata": {
-    "tile_index": 0,
+    "tile_index": 16,
     "platform": "Sentinel-2A",
     "mgrs_tile": "43PGQ",
     "product_level": "L2A",
@@ -54,8 +54,8 @@
     "geographic_hold_out_split": "Strict Southeast Quadrant (rows 256..512, cols 256..512) - Zero Spatial Leakage"
   },
   "evidence_metrics": {
-    "fused_trust_score_pct": 86.75,
-    "mean_composite_risk": 0.1325,
+    "fused_trust_score_pct": 86.41,
+    "mean_composite_risk": 0.1359,
     "pct_high_risk_pixels": 0.0,
     "weights_used": {
       "disagreement": 0.25,
@@ -66,51 +66,53 @@
     "disagreement_proxy": {
       "metric_name": "Ensemble Standard Deviation (sigma)",
       "interpretation": "Epistemic model uncertainty proxy",
-      "raw_mean": 0.0015506672207266092,
-      "raw_max": 0.010846160352230072,
+      "raw_mean": 0.0014940687688067555,
+      "raw_max": 0.011914083734154701,
       "weight": 0.25
     },
     "stability_proxy": {
       "metric_name": "Perturbation Output Variance",
       "interpretation": "Sensitivity to sensor noise and brightness shifts",
-      "raw_mean": 0.0005062422715127468,
-      "raw_max": 0.0023697754368185997,
+      "raw_mean": 0.0005049582105129957,
+      "raw_max": 0.0023721831385046244,
       "weight": 0.25
     },
     "spectral_consistency": {
       "metric_name": "Absolute Delta-NDVI Error",
       "interpretation": "Radiometric fidelity of vegetation spectra",
-      "mean_delta_ndvi": 0.02145,
-      "max_delta_ndvi": 0.16478,
-      "pct_inconsistent_pixels": 7.34,
+      "mean_delta_ndvi": 0.02122,
+      "max_delta_ndvi": 0.13997,
+      "pct_inconsistent_pixels": 6.57,
       "is_consistent": true,
       "weight": 0.25
     },
     "structural_consistency": {
       "metric_name": "Sobel Gradient Correlation & Canny Alignment",
       "interpretation": "High-frequency boundary and edge fidelity",
-      "gradient_correlation_r": 0.7867,
-      "canny_edge_iou": 0.4019,
-      "canny_edge_f1": 0.5733,
+      "gradient_correlation_r": 0.7827,
+      "canny_edge_iou": 0.3918,
+      "canny_edge_f1": 0.563,
       "weight": 0.25
     },
     "downstream_task_evaluation": {
       "task": "Building Footprint Morphological Analysis",
       "scientific_label": "Bicubic-vs-SR Footprint Agreement (No Independent GT)",
-      "bicubic_vs_sr_iou": 0.9374,
-      "bicubic_vs_sr_dice": 0.9677,
-      "high_trust_region_iou": 0.9343,
-      "low_trust_region_iou": 0.945,
-      "high_trust_area_pct": 69.96,
-      "relative_reference_hr_iou": 0.4325
+      "bicubic_vs_sr_iou": 0.9332,
+      "bicubic_vs_sr_dice": 0.9655,
+      "high_trust_region_iou": 0.9376,
+      "low_trust_region_iou": 0.9248,
+      "high_trust_area_pct": 66.97,
+      "relative_reference_hr_iou": 0.5384
     }
   },
   "trust_evaluation": {
-    "status": "NOMINAL_HIGH_TRUST",
-    "confidence_level": "HIGH CONFIDENCE",
-    "is_trusted": true,
+    "status": "WARNING_LOW_TRUST",
+    "confidence_level": "MODERATE / CONDITIONAL CONFIDENCE",
+    "is_trusted": false,
     "min_trust_threshold_evaluated": 86.5,
-    "summary": "Reconstruction satisfies all multi-criteria reliability benchmarks. Composite Trust Score (86.75%) exceeds nominal operational threshold (86.50%).",
-    "warnings_and_advisories": []
+    "summary": "Reconstruction is usable with caveats. One or more empirical reliability indicators triggered advisories.",
+    "warnings_and_advisories": [
+      "LOW TRUST WARNING: Composite Trust Score (86.41%) falls 0.09% below the configured operational threshold (86.50%). Reconstructed tile exhibits elevated boundary disagreement or spectral inconsistency. Automated downstream decisions should require manual human-in-the-loop review."
+    ]
   }
 }
