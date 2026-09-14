@@ -137,5 +137,26 @@ To verify the real-world operational utility of super-resolved imagery, GeoFUSE 
   - Sample #3: Bic-SR IoU **0.9058**, High-Trust IoU **0.9004**, Low-Trust IoU **0.9131**, SR-Ref IoU **0.5268** (63.6% High-Trust)
 - **Overlay Diagnostics**: Multi-panel previews (`outputs/previews/downstream_footprint_overlay_sample_*.png`) visualize model agreement (Cyan) vs. boundary discrepancy (Orange) atop the scene.
 
+---
+
+## Interactive Demonstration Dashboard (Phase 10)
+
+GeoFUSE SentinelGuard includes an interactive Streamlit dashboard (`src/dashboard/app.py`) for live comparative inspection:
+
+- **Side-by-Side Verification**: Simultaneous 4-column display of:
+  1. **Original Reference (10m)** [Pre-degradation Sentinel-2]
+  2. **Bicubic Baseline (2x)** [Standard interpolation]
+  3. **GeoFUSE SR (2x)** [Ensemble Mean Reconstruction]
+  4. **Trust / Risk Map Overlay** [RdYlGn colormap: Green = High Trust, Red = High Risk]
+- **Downstream Task Toggle**: Interactive inspection of building footprint contours, consensus masks, and trust stratification statistics.
+- **Evidence Breakdown Toggle**: Live inspection of individual evidence maps (disagreement, stability, $\Delta$NDVI, gradient error).
+- **Cached Inference**: Utilizes Streamlit resource caching to ensure rapid, responsive tile navigation without timeouts or redundant compute.
+
+### Launching the Dashboard:
+```bash
+streamlit run src/dashboard/app.py
+```
+
+
 
 
