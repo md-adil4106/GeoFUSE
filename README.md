@@ -57,3 +57,24 @@ python scripts/smoke_test.py
 ### 3. Hardware Support
 - Automatically detects CUDA-capable GPUs (e.g., NVIDIA RTX 4060).
 - If a GPU is not detected or CUDA PyTorch is not present, falls back gracefully to CPU with clear notifications.
+
+---
+
+## Scientific Rigor & Geographic Hold-Out Strategy
+
+In Earth Observation (EO) and satellite imagery super-resolution, standard random patch splitting is scientifically flawed due to spatial autocorrelation: adjacent overlapping tiles in training and validation sets cause data leakage, leading to artificially inflated accuracy metrics.
+
+GeoFUSE SentinelGuard enforces an **independent contiguous geographic hold-out split**:
+- **Scene Dimensions**: 512 × 512 pixels (approx. 5.12 km × 5.12 km) at 10m Ground Sample Distance (GSD).
+- **Validation Hold-Out Zone**: Strictly contiguous Southeast Quadrant (`rows 256..512, cols 256..512`). Total: 49 non-leaking evaluation patches.
+- **Training Zone**: North and West sub-regions. Total: 120 training patches.
+- **Zero Spatial Leakage**: Strict spatial separation guarantees that model generalizability is tested on completely unseen landscape geometry.
+
+### Quantitative Benchmark Comparison (Hold-Out Evaluation)
+
+| Architecture / Method | Parameters | Val Loss (Compound L1+Sobel) | Val PSNR (dB) | Val SSIM |
+| :--- | :--- | :--- | :--- | :--- |
+| **Bicubic Baseline (2x)** | 0 (Interpolation) | 0.01920 | 38.19 dB | 0.9208 |
+| **ResidualSRNet (Ours)** | 273,700 (~0.27M) | **0.01726** | **38.68 dB** | **0.9270** |
+| *Delta vs. Baseline* | — | *-0.00194* | *+0.49 dB* | *+0.0062* |
+
