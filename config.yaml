@@ -91,10 +91,18 @@ verification:
     normalization: "minmax" # Normalizes each signal to [0, 1] to prevent scale dominance
     high_risk_threshold: 0.65  # Threshold above which pixels are categorized as low trust / high risk
 
-# Downstream Task Scaffolding
+# Downstream Task Scaffolding & Evaluation
 downstream:
   task_type: "building_footprint_analysis"
   threshold: 0.35
+  extractor: "morphological"   # Options: "morphological", "pretrained"
+  morphology:
+    tophat_kernel_size: 7      # Structural element kernel size (pixels)
+    tophat_threshold: 25       # Minimum brightness contrast for built-up structures
+    max_ndvi: 0.20             # Maximum NDVI to exclude vegetation
+    min_area: 4                # Minimum component area (pixels) to filter noise
+    max_area: 600              # Maximum component area (pixels) to exclude massive regions
+  trust_partition_threshold: 0.85 # Threshold to separate high-trust from low-trust regions
 
 # Interactive Streamlit Dashboard
 dashboard:
