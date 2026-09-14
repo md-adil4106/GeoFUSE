@@ -1,13 +1,33 @@
-"""Evaluation, stability testing, uncertainty proxies, and Trust Receipt module."""
+"""Evaluation, stability testing, spectral consistency, and structural checks."""
 
 from .stability import (
     apply_controlled_perturbation,
     compute_stability_map,
     compare_disagreement_and_stability,
 )
+from .spectral_check import (
+    compute_ndvi,
+    compute_spectral_consistency,
+    render_spectral_ndvi_overlay,
+    SpectralBandError,
+)
+from .edge_check import (
+    extract_canny_edges,
+    compute_gradient_magnitude,
+    compute_edge_consistency,
+    render_edge_consistency_overlay,
+)
 
 __all__ = [
     "apply_controlled_perturbation",
     "compute_stability_map",
     "compare_disagreement_and_stability",
+    "compute_ndvi",
+    "compute_spectral_consistency",
+    "render_spectral_ndvi_overlay",
+    "SpectralBandError",
+    "extract_canny_edges",
+    "compute_gradient_magnitude",
+    "compute_edge_consistency",
+    "render_edge_consistency_overlay",
 ]

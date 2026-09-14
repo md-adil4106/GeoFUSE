@@ -78,3 +78,22 @@ GeoFUSE SentinelGuard enforces an **independent contiguous geographic hold-out s
 | **ResidualSRNet (Ours)** | 273,700 (~0.27M) | **0.01726** | **38.68 dB** | **0.9270** |
 | *Delta vs. Baseline* | — | *-0.00194* | *+0.49 dB* | *+0.0062* |
 
+---
+
+## Verification & Consistency Checks (Phase 7)
+
+To ensure super-resolution models do not introduce radiometric distortion or structural hallucinations, GeoFUSE SentinelGuard performs two independent verification checks against pre-degradation reference imagery:
+
+1. **Radiometric / Spectral Consistency**:
+   - Computes $\Delta\text{NDVI} = |\text{NDVI}_{SR} - \text{NDVI}_{GT}|$ using red (B04) and near-infrared (B08) bands.
+   - Flags pixels exceeding tolerance threshold ($\tau = 0.05$).
+   - Computes multi-spectral Green/Red ratio consistency.
+   - Raises explicit `SpectralBandError` if required spectral bands are missing or mismatched.
+   - **Empirical Results**: Mean $\Delta\text{NDVI} \approx 0.021$ across diverse tiles, with $>92\%$ of pixels within tolerance.
+
+2. **Structural & Edge Alignment**:
+   - Quantifies boundary preservation using Canny edge maps (IoU, Precision, Recall, and F1 score).
+   - Evaluates spatial high-frequency correlation via Sobel gradient magnitude Pearson correlation ($r$).
+   - Generates multi-color diagnostic overlays highlighting matched edges (Green), hallucinated/shifted edges (Red), and missed edges (Cyan).
+   - **Empirical Results**: Edge IoU $\approx 0.40 - 0.42$, Edge F1 $\approx 0.57 - 0.59$, Gradient Correlation $r \approx 0.78 - 0.81$.
+
