@@ -4,8 +4,10 @@ Demonstrates trust-aware satellite image super-resolution on real Sentinel-2 L2A
 1. Side-by-side view: Reference 10m, Bicubic baseline (2x), GeoFUSE SR (2x), and Trust/Risk Map.
 2. Comprehensive multi-criteria evidence breakdown (disagreement, stability, NDVI, edge gradient).
 3. Downstream task evaluation toggle: Building footprint extraction & trust stratification.
+4. Auditable Trust Receipt viewer tab with human-readable HTML summary & downloadable JSON.
 """
 
+import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -33,6 +35,10 @@ from src.evaluation.edge_check import (
 from src.evaluation.fusion import fuse_trust_risk_maps
 from src.evaluation.spectral_check import compute_spectral_consistency
 from src.evaluation.stability import compute_stability_map
+from src.evaluation.trust_receipt import (
+    generate_trust_receipt,
+    render_trust_receipt_html,
+)
 from src.models.ensemble import load_ensemble_members, predict_ensemble
 from src.utils.config import get_device, get_project_root, load_config
 
@@ -70,6 +76,8 @@ def load_cached_scene():
 def run_cached_pipeline(tile_idx: int) -> Dict[str, Any]:
     """Execute complete inference, verification, and fusion pipeline for a tile."""
     models, config, device = load_cached_models()
+    root = get_project_root()
+    raw_dir = root / config.get("paths", {}).get("raw_data_dir", "data/raw")
     _, _, tiles = load_cached_scene()
 
     hr_tile = tiles[tile_idx]["data"]
@@ -172,6 +180,20 @@ def run_cached_pipeline(tile_idx: int) -> Dict[str, Any]:
         trust_threshold=float(down_cfg.get("trust_partition_threshold", 0.85)),
     )
 
+    # 7. Auditable Trust Receipt compilation
+    pipeline_data = {
+        "fusion_result": fusion_result,
+        "spectral_metrics": spectral_metrics,
+        "edge_metrics": edge_metrics,
+        "downstream_comp": downstream_comp,
+    }
+    receipt = generate_trust_receipt(
+        tile_idx=tile_idx,
+        raw_dir=raw_dir,
+        config=config,
+        pipeline_data=pipeline_data,
+    )
+
     return {
         "hr_tile": hr_tile,
         "lr_tile": lr_tile,
@@ -187,6 +209,7 @@ def run_cached_pipeline(tile_idx: int) -> Dict[str, Any]:
         "foot_sr": foot_sr,
         "foot_ref": foot_ref,
         "downstream_comp": downstream_comp,
+        "receipt": receipt,
     }
 
 
@@ -272,6 +295,7 @@ def main():
     sr_tile = data["sr_tile"]
     fusion_result = data["fusion_result"]
     trust_map = fusion_result["trust_map"]
+    receipt = data["receipt"]
 
     # Prepare Display Images
     hr_rgb = to_display_rgb(hr_tile, false_color=is_false_color)
@@ -283,134 +307,169 @@ def main():
     trust_colored = (cmap(trust_map)[:, :, :3] * 255).astype(np.uint8)
     trust_overlay = (0.55 * sr_rgb + 0.45 * trust_colored).astype(np.uint8)
 
-    # 3. Main Side-by-Side View (4 Columns as requested by prompt)
-    st.markdown("### 🖼️ Side-by-Side Super-Resolution & Trust Verification")
-    col1, col2, col3, col4 = st.columns(4)
+    # Tabs: Tab 1 = Comparative Inspection, Tab 2 = Auditable Trust Receipt
+    tab1, tab2 = st.tabs([
+        "🔍 Super-Resolution & Evidence Inspection",
+        "📜 Auditable Trust Receipt (JSON & HTML)",
+    ])
 
-    with col1:
-        st.subheader("1. Original Reference (10m)")
-        st.image(hr_rgb, caption="Pre-degradation Sentinel-2", use_container_width=True)
-        st.caption("Ground Sample Distance: 10m")
+    with tab1:
+        # Main Side-by-Side View (4 Columns as requested by prompt)
+        st.markdown("### 🖼️ Side-by-Side Super-Resolution & Trust Verification")
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col2:
-        st.subheader("2. Bicubic Baseline (2x)")
-        st.image(bic_rgb, caption="Standard Interpolation", use_container_width=True)
-        st.caption("Soft upsample, no structural synthesis")
+        with col1:
+            st.subheader("1. Original Reference (10m)")
+            st.image(hr_rgb, caption="Pre-degradation Sentinel-2", use_container_width=True)
+            st.caption("Ground Sample Distance: 10m")
 
-    with col3:
-        st.subheader("3. GeoFUSE SR (2x)")
-        st.image(sr_rgb, caption="Ensemble Mean Reconstruction", use_container_width=True)
-        st.caption("Lightweight ResidualSRNet Ensemble (~0.27M params)")
+        with col2:
+            st.subheader("2. Bicubic Baseline (2x)")
+            st.image(bic_rgb, caption="Standard Interpolation", use_container_width=True)
+            st.caption("Soft upsample, no structural synthesis")
 
-    with col4:
-        st.subheader("4. Trust / Risk Map Overlay")
-        st.image(trust_overlay, caption="RdYlGn: Green=Trust, Red=Risk", use_container_width=True)
-        st.caption(f"Mean Trust Score: **{fusion_result['trust_score_pct']}%**")
+        with col3:
+            st.subheader("3. GeoFUSE SR (2x)")
+            st.image(sr_rgb, caption="Ensemble Mean Reconstruction", use_container_width=True)
+            st.caption("Lightweight ResidualSRNet Ensemble (~0.27M params)")
 
-    # 4. Summary Reliability Scorecards
-    st.markdown("---")
-    st.markdown("### 📊 Quantitative Reliability Metrics")
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Trust Score", f"{fusion_result['trust_score_pct']}%", delta=f"{fusion_result['trust_score_pct'] - 50:.1f}%")
-    m2.metric("Mean Composite Risk", f"{fusion_result['mean_risk_score']:.4f}")
-    m3.metric("Disagreement Std (σ)", f"{fusion_result['component_stats']['disagreement']['raw_mean']:.5f}")
-    m4.metric("Mean Delta-NDVI", f"{data['spectral_metrics']['mean_delta_ndvi']:.4f}")
-    m5.metric("Edge Grad Corr (r)", f"{data['edge_metrics']['gradient_correlation']:.4f}")
+        with col4:
+            st.subheader("4. Trust / Risk Map Overlay")
+            st.image(trust_overlay, caption="RdYlGn: Green=Trust, Red=Risk", use_container_width=True)
+            st.caption(f"Mean Trust Score: **{fusion_result['trust_score_pct']}%**")
 
-    # 5. Downstream Building Footprint Analysis (Phase 9 Toggle)
-    if show_downstream:
+        # Summary Reliability Scorecards
         st.markdown("---")
-        st.markdown("### 🏢 Downstream Task Evaluation: Building Footprint Extraction (Phase 9)")
+        st.markdown("### 📊 Quantitative Reliability Metrics")
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("Trust Score", f"{fusion_result['trust_score_pct']}%", delta=f"{fusion_result['trust_score_pct'] - 50:.1f}%")
+        m2.metric("Mean Composite Risk", f"{fusion_result['mean_risk_score']:.4f}")
+        m3.metric("Disagreement Std (σ)", f"{fusion_result['component_stats']['disagreement']['raw_mean']:.5f}")
+        m4.metric("Mean Delta-NDVI", f"{data['spectral_metrics']['mean_delta_ndvi']:.4f}")
+        m5.metric("Edge Grad Corr (r)", f"{data['edge_metrics']['gradient_correlation']:.4f}")
+
+        # Downstream Building Footprint Analysis (Phase 9 Toggle)
+        if show_downstream:
+            st.markdown("---")
+            st.markdown("### 🏢 Downstream Task Evaluation: Building Footprint Extraction (Phase 9)")
+            st.caption(
+                "Extracts rooftop components using identical morphological top-hat filtering and NDVI vegetation rejection. "
+                "Evaluates consistency between Bicubic and SR reconstructions across High-Trust vs. Low-Trust geographic zones."
+            )
+
+            foot_bic = data["foot_bic"]
+            foot_sr = data["foot_sr"]
+            comp = data["downstream_comp"]
+
+            def add_contours(base_rgb, mask, color=(0, 240, 255)):
+                out = base_rgb.copy()
+                contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                cv2.drawContours(out, contours, -1, color, 1)
+                return out
+
+            bic_cnt = add_contours(bic_rgb, foot_bic["mask"])
+            sr_cnt = add_contours(sr_rgb, foot_sr["mask"])
+
+            gray_bg = cv2.cvtColor(sr_rgb, cv2.COLOR_RGB2GRAY)
+            agree_rgb = np.stack([gray_bg, gray_bg, gray_bg], axis=-1)
+            agree_rgb[comp["agreement_mask"]] = [0, 230, 255]       # Cyan: Matched detections
+            agree_rgb[comp["discrepancy_mask"]] = [255, 120, 0]     # Orange: Discrepant detections
+
+            d_col1, d_col2, d_col3 = st.columns(3)
+            with d_col1:
+                st.markdown(f"**Bicubic Footprints** ({foot_bic['footprint_pixels']} px)")
+                st.image(bic_cnt, caption="Cyan Contours: Bicubic Detections", use_container_width=True)
+
+            with d_col2:
+                st.markdown(f"**GeoFUSE SR Footprints** ({foot_sr['footprint_pixels']} px)")
+                st.image(sr_cnt, caption="Cyan Contours: SR Detections", use_container_width=True)
+
+            with d_col3:
+                st.markdown("**Footprint Agreement Map**")
+                st.image(agree_rgb, caption="Cyan: Consensus | Orange: Boundary Discrepancy", use_container_width=True)
+
+            st.markdown("#### Quantitative Footprint Agreement Breakdown")
+            stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+            stat_col1.metric("Overall Bicubic vs SR IoU", f"{comp['overall_bic_sr']['iou']:.4f}")
+            stat_col2.metric("High-Trust Region IoU", f"{comp['high_trust_bic_sr']['iou']:.4f}")
+            stat_col3.metric("Low-Trust Region IoU", f"{comp['low_trust_bic_sr']['iou']:.4f}")
+            stat_col4.metric("Relative Ref HR IoU", f"{comp['reference_comparison']['sr_vs_ref_iou']:.4f}")
+
+        # Detailed Multi-Criteria Evidence Breakdown (Phase 5-7 Toggle)
+        if show_evidence:
+            st.markdown("---")
+            st.markdown("### 🔬 Multi-Source Evidence Signal Breakdown (Phases 5 -- 7)")
+            st.caption("Each signal is min-max normalized to [0, 1] to prevent scale dominance prior to weighted fusion.")
+
+            norm_sig = fusion_result["normalized_signals"]
+            e_col1, e_col2, e_col3, e_col4 = st.columns(4)
+
+            with e_col1:
+                st.markdown("**Disagreement Proxy (Phase 5)**")
+                fig1, ax1 = plt.subplots(figsize=(4, 3.5), dpi=100)
+                im1 = ax1.imshow(norm_sig["disagreement"], cmap="magma", vmin=0, vmax=1)
+                ax1.axis("off")
+                plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
+                st.pyplot(fig1, use_container_width=True)
+                plt.close(fig1)
+
+            with e_col2:
+                st.markdown("**Perturbation Stability (Phase 6)**")
+                fig2, ax2 = plt.subplots(figsize=(4, 3.5), dpi=100)
+                im2 = ax2.imshow(norm_sig["stability"], cmap="inferno", vmin=0, vmax=1)
+                ax2.axis("off")
+                plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+                st.pyplot(fig2, use_container_width=True)
+                plt.close(fig2)
+
+            with e_col3:
+                st.markdown("**Spectral Delta-NDVI (Phase 7)**")
+                fig3, ax3 = plt.subplots(figsize=(4, 3.5), dpi=100)
+                im3 = ax3.imshow(norm_sig["spectral"], cmap="cividis", vmin=0, vmax=1)
+                ax3.axis("off")
+                plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04)
+                st.pyplot(fig3, use_container_width=True)
+                plt.close(fig3)
+
+            with e_col4:
+                st.markdown("**Structural Gradient Error (Phase 7)**")
+                fig4, ax4 = plt.subplots(figsize=(4, 3.5), dpi=100)
+                im4 = ax4.imshow(norm_sig["structural"], cmap="plasma", vmin=0, vmax=1)
+                ax4.axis("off")
+                plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04)
+                st.pyplot(fig4, use_container_width=True)
+                plt.close(fig4)
+
+    # -------------------------------------------------------------------------
+    # TAB 2: Auditable Trust Receipt Viewer Tab (Phase 11)
+    # -------------------------------------------------------------------------
+    with tab2:
+        st.markdown("### 📜 Auditable Trust Receipt")
         st.caption(
-            "Extracts rooftop components using identical morphological top-hat filtering and NDVI vegetation rejection. "
-            "Evaluates consistency between Bicubic and SR reconstructions across High-Trust vs. Low-Trust geographic zones."
+            "Cryptographically auditable evidence record compiling model provenance, GeoTIFF acquisition metadata, "
+            "empirical multi-criteria verification metrics, and automated plain-language advisories."
         )
 
-        foot_bic = data["foot_bic"]
-        foot_sr = data["foot_sr"]
-        comp = data["downstream_comp"]
+        # Render HTML summary card
+        receipt_html = render_trust_receipt_html(receipt)
+        st.markdown(receipt_html, unsafe_allow_html=True)
 
-        # Contour overlays
-        def add_contours(base_rgb, mask, color=(0, 240, 255)):
-            out = base_rgb.copy()
-            contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.drawContours(out, contours, -1, color, 1)
-            return out
+        # JSON Download and Explorer
+        st.markdown("#### 💾 Export & Raw JSON Record")
+        receipt_json_str = json.dumps(receipt, indent=2, ensure_ascii=False)
 
-        bic_cnt = add_contours(bic_rgb, foot_bic["mask"])
-        sr_cnt = add_contours(sr_rgb, foot_sr["mask"])
+        col_dl, col_exp = st.columns([1, 4])
+        with col_dl:
+            st.download_button(
+                label="📥 Download Trust Receipt (JSON)",
+                data=receipt_json_str,
+                file_name=f"trust_receipt_tile_{selected_idx}.json",
+                mime="application/json",
+                use_container_width=True,
+            )
 
-        # Multi-color agreement map
-        gray_bg = cv2.cvtColor(sr_rgb, cv2.COLOR_RGB2GRAY)
-        agree_rgb = np.stack([gray_bg, gray_bg, gray_bg], axis=-1)
-        agree_rgb[comp["agreement_mask"]] = [0, 230, 255]       # Cyan: Matched detections
-        agree_rgb[comp["discrepancy_mask"]] = [255, 120, 0]     # Orange: Discrepant detections
-
-        d_col1, d_col2, d_col3 = st.columns(3)
-        with d_col1:
-            st.markdown(f"**Bicubic Footprints** ({foot_bic['footprint_pixels']} px)")
-            st.image(bic_cnt, caption="Cyan Contours: Bicubic Detections", use_container_width=True)
-
-        with d_col2:
-            st.markdown(f"**GeoFUSE SR Footprints** ({foot_sr['footprint_pixels']} px)")
-            st.image(sr_cnt, caption="Cyan Contours: SR Detections", use_container_width=True)
-
-        with d_col3:
-            st.markdown("**Footprint Agreement Map**")
-            st.image(agree_rgb, caption="Cyan: Consensus | Orange: Boundary Discrepancy", use_container_width=True)
-
-        # Downstream statistics table
-        st.markdown("#### Quantitative Footprint Agreement Breakdown")
-        stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
-        stat_col1.metric("Overall Bicubic vs SR IoU", f"{comp['overall_bic_sr']['iou']:.4f}")
-        stat_col2.metric("High-Trust Region IoU", f"{comp['high_trust_bic_sr']['iou']:.4f}")
-        stat_col3.metric("Low-Trust Region IoU", f"{comp['low_trust_bic_sr']['iou']:.4f}")
-        stat_col4.metric("Relative Ref HR IoU", f"{comp['reference_comparison']['sr_vs_ref_iou']:.4f}")
-
-    # 6. Detailed Multi-Criteria Evidence Breakdown (Phase 5-7 Toggle)
-    if show_evidence:
-        st.markdown("---")
-        st.markdown("### 🔬 Multi-Source Evidence Signal Breakdown (Phases 5 -- 7)")
-        st.caption("Each signal is min-max normalized to [0, 1] to prevent scale dominance prior to weighted fusion.")
-
-        norm_sig = fusion_result["normalized_signals"]
-        e_col1, e_col2, e_col3, e_col4 = st.columns(4)
-
-        with e_col1:
-            st.markdown("**Disagreement Proxy (Phase 5)**")
-            fig1, ax1 = plt.subplots(figsize=(4, 3.5), dpi=100)
-            im1 = ax1.imshow(norm_sig["disagreement"], cmap="magma", vmin=0, vmax=1)
-            ax1.axis("off")
-            plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
-            st.pyplot(fig1, use_container_width=True)
-            plt.close(fig1)
-
-        with e_col2:
-            st.markdown("**Perturbation Stability (Phase 6)**")
-            fig2, ax2 = plt.subplots(figsize=(4, 3.5), dpi=100)
-            im2 = ax2.imshow(norm_sig["stability"], cmap="inferno", vmin=0, vmax=1)
-            ax2.axis("off")
-            plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
-            st.pyplot(fig2, use_container_width=True)
-            plt.close(fig2)
-
-        with e_col3:
-            st.markdown("**Spectral Delta-NDVI (Phase 7)**")
-            fig3, ax3 = plt.subplots(figsize=(4, 3.5), dpi=100)
-            im3 = ax3.imshow(norm_sig["spectral"], cmap="cividis", vmin=0, vmax=1)
-            ax3.axis("off")
-            plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04)
-            st.pyplot(fig3, use_container_width=True)
-            plt.close(fig3)
-
-        with e_col4:
-            st.markdown("**Structural Gradient Error (Phase 7)**")
-            fig4, ax4 = plt.subplots(figsize=(4, 3.5), dpi=100)
-            im4 = ax4.imshow(norm_sig["structural"], cmap="plasma", vmin=0, vmax=1)
-            ax4.axis("off")
-            plt.colorbar(im4, ax=ax4, fraction=0.046, pad=0.04)
-            st.pyplot(fig4, use_container_width=True)
-            plt.close(fig4)
+        with st.expander("🔍 Inspect Full Machine-Readable JSON Schema & Record", expanded=False):
+            st.json(receipt, expanded=False)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,12 @@ from .downstream_eval import (
     render_downstream_overlay,
     FootprintExtractionError,
 )
+from .trust_receipt import (
+    extract_geotiff_metadata,
+    generate_trust_receipt,
+    save_trust_receipt,
+    render_trust_receipt_html,
+)
 
 __all__ = [
     "apply_controlled_perturbation",
@@ -48,4 +54,8 @@ __all__ = [
     "compare_downstream_footprints",
     "render_downstream_overlay",
     "FootprintExtractionError",
+    "extract_geotiff_metadata",
+    "generate_trust_receipt",
+    "save_trust_receipt",
+    "render_trust_receipt_html",
 ]

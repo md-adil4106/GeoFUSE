@@ -77,6 +77,8 @@ checkpoints/*
 # Demo / runtime outputs & artifacts
 outputs/*
 !outputs/.gitkeep
+!outputs/receipts/
+!outputs/receipts/*.json
 cache/*
 !cache/.gitkeep
 *.tif

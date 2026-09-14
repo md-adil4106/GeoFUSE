@@ -109,3 +109,8 @@ dashboard:
   host: "localhost"
   port: 8501
   enable_caching: true
+
+# Auditable Trust Receipt Configuration
+trust_receipt:
+  min_trust_score_threshold: 86.5   # Percentage threshold below which warning is flagged
+  outputs_dir: "outputs/receipts"

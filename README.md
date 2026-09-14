@@ -157,6 +157,33 @@ GeoFUSE SentinelGuard includes an interactive Streamlit dashboard (`src/dashboar
 streamlit run src/dashboard/app.py
 ```
 
+---
+
+## Auditable Trust Receipts (Phase 11)
+
+In mission-critical geospatial analysis, super-resolved imagery should never be delivered as an unverified visual output. GeoFUSE SentinelGuard implements an auditable **Trust Receipt generator** that pairs every reconstructed tile with a cryptographically timestamped, machine-readable JSON receipt (`outputs/receipts/trust_receipt_sample_*.json` and `examples/trust_receipt_sample_3.json`) and an interactive HTML report card.
+
+### Receipt Components
+1. **Model Provenance**: Records the architecture (`ResidualSRNet`), total trainable parameter count (~0.27M), scaling factor (2x), and exact ensemble checkpoint paths (`outputs/checkpoints/ensemble_member_{0,1,2}.pth`).
+2. **Geospatial & Acquisition Metadata**: Extracted directly from GeoTIFF headers (`EPSG:32643`, 10m GSD, MGRS `43PGQ`, Sentinel-2A, spatial bounding box coordinates).
+3. **Strict Scientific Honesty Mandate**: Metadata fields not present in standalone band GeoTIFF headers (such as `cloud_cover_percentage`, `sun_elevation_angle_deg`, `sun_azimuth_angle_deg`, and `satellite_orbit_number`, which reside in XML SAFE manifests) are explicitly marked as `"unavailable"` rather than guessed or fabricated.
+4. **Empirical Evidence Summary**: Disagreement std ($0.0163 - 0.0195$), stability variance ($0.00018 - 0.00020$), mean $\Delta\text{NDVI}$ ($0.021 - 0.022$), edge gradient correlation ($0.78 - 0.81$), and fused trust score ($86.02\% - 86.75\%$).
+5. **Downstream Task Metrics**: Bicubic vs. SR building footprint agreement (IoU $\approx 0.91 - 0.95$), stratified by high-trust and low-trust zones.
+6. **Automated Risk & Trust Warnings**: Evaluates the fused trust score against a configurable threshold (`min_trust_score_threshold: 86.5%`). If trust is compromised, an unambiguous plain-language warning is attached to the receipt (e.g. Sample #2 at 86.41% and Sample #3 at 86.02% trigger `LOW TRUST WARNING`).
+
+### Generating Trust Receipts via CLI:
+```bash
+python scripts/generate_trust_receipts.py
+```
+
+### Interactive Dashboard Viewer:
+Inside the Streamlit dashboard (`src/dashboard/app.py`), navigate to **Tab 2: "📜 Auditable Trust Receipt (JSON & HTML)"** to view:
+- Color-coded HTML status banner (High Trust Approved vs. Low Trust Warning).
+- Comprehensive metadata and metrics summary tables.
+- Interactive JSON schema tree.
+- Direct **"Download Trust Receipt (JSON)"** button for automated ingestion into downstream GIS workflows.
+
+
 
 
 
