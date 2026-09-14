@@ -17,6 +17,11 @@ from .edge_check import (
     compute_edge_consistency,
     render_edge_consistency_overlay,
 )
+from .fusion import (
+    normalize_evidence_map,
+    fuse_trust_risk_maps,
+    render_trust_risk_overlay,
+)
 
 __all__ = [
     "apply_controlled_perturbation",
@@ -30,4 +35,7 @@ __all__ = [
     "compute_gradient_magnitude",
     "compute_edge_consistency",
     "render_edge_consistency_overlay",
+    "normalize_evidence_map",
+    "fuse_trust_risk_maps",
+    "render_trust_risk_overlay",
 ]

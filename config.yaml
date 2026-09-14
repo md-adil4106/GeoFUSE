@@ -80,6 +80,16 @@ verification:
   structural_consistency:
     ssim_threshold: 0.70
     edge_gradient_tolerance: 0.15
+  evidence_fusion:
+    # Heuristic weights for multi-evidence trust/risk fusion (must sum to 1.0)
+    # NOTE: This is an empirical heuristic fusion, not a calibrated Bayesian posterior probability.
+    weights:
+      disagreement: 0.25   # Uncertainty proxy from ensemble variance
+      stability: 0.25      # Input-perturbation sensitivity
+      spectral: 0.25       # Radiometric/NDVI consistency
+      structural: 0.25     # High-frequency edge/gradient consistency
+    normalization: "minmax" # Normalizes each signal to [0, 1] to prevent scale dominance
+    high_risk_threshold: 0.65  # Threshold above which pixels are categorized as low trust / high risk
 
 # Downstream Task Scaffolding
 downstream:

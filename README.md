@@ -97,3 +97,26 @@ To ensure super-resolution models do not introduce radiometric distortion or str
    - Generates multi-color diagnostic overlays highlighting matched edges (Green), hallucinated/shifted edges (Red), and missed edges (Cyan).
    - **Empirical Results**: Edge IoU $\approx 0.40 - 0.42$, Edge F1 $\approx 0.57 - 0.59$, Gradient Correlation $r \approx 0.78 - 0.81$.
 
+---
+
+## Multi-Evidence Trust/Risk Map Fusion (Phase 8)
+
+GeoFUSE SentinelGuard synthesizes all four independent reliability signals into a unified spatial **Trust/Risk Map**:
+
+$$\text{Risk}(x, y) = w_1 R_{\text{disag}}(x, y) + w_2 R_{\text{stab}}(x, y) + w_3 R_{\text{spec}}(x, y) + w_4 R_{\text{struct}}(x, y)$$
+
+$$\text{Trust}(x, y) = 1.0 - \text{Risk}(x, y)$$
+
+> [!NOTE]
+> **Scientific Transparency**: This composite is an **empirical heuristic fusion**, not a calibrated Bayesian posterior probability.
+
+- **Scale Dominance Guard**: Each individual signal is normalized to $[0.0, 1.0]$ via min-max scaling prior to combination, ensuring that higher-magnitude metrics (e.g. gradient difference) do not overpower subtle signals (e.g. stability variance).
+- **Configurable Weights**: Defined in `config.yaml` ($w_{\text{disag}}=0.25, w_{\text{stab}}=0.25, w_{\text{spec}}=0.25, w_{\text{struct}}=0.25$).
+- **Interpretable Output**: Provides a single per-tile scalar **Trust Score** ($0 - 100\%$) and spatial risk heatmaps (Green = High Trust, Red = High Risk).
+- **Empirical Benchmark Across Held-Out Tiles**:
+  - Sample #0: Trust Score **86.53%**, Mean Risk 0.1347, High-Risk Flagged: 0.00%
+  - Sample #1: Trust Score **86.98%**, Mean Risk 0.1302, High-Risk Flagged: 0.00%
+  - Sample #2: Trust Score **86.11%**, Mean Risk 0.1389, High-Risk Flagged: 0.00%
+  - Sample #3: Trust Score **85.49%**, Mean Risk 0.1451, High-Risk Flagged: 0.00%
+
+
