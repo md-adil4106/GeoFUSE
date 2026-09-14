@@ -72,6 +72,7 @@ verification:
   perturbation_test:
     enabled: true
     noise_levels: [0.01, 0.02, 0.05]
+    brightness_jitter_std: 0.02
     num_trials: 3
   spectral_consistency:
     ndvi_threshold: 0.05      # Flag patches with significant delta-NDVI

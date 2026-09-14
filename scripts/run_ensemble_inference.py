@@ -73,7 +73,7 @@ def render_ensemble_figure(
         f"Input Pseudo-LR (2x Downscaled)\n[{lr_tile.shape[0]}x{lr_tile.shape[1]} px, Nearest]",
         f"Ensemble Mean (2x SR)\n[PSNR: {metrics['psnr_db']:.2f} dB | SSIM: {metrics['ssim']:.4f}]",
         f"Pseudo-HR Ground Truth (10m)\n[{hr_tile.shape[0]}x{hr_tile.shape[1]} px, Reference]",
-        f"Ensemble Disagreement Map\n[Uncertainty Proxy (\u03c3), Mean: {np.mean(disagreement_map):.4f}]",
+        f"Ensemble Disagreement Map\n[Uncertainty Proxy (sigma), Mean: {np.mean(disagreement_map):.4f}]",
         f"True Residual Error Map\n[MAE: {metrics['mae']:.4f}]",
     ]
 
