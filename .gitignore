@@ -81,6 +81,8 @@ outputs/*
 !outputs/receipts/*.json
 !outputs/demo_cache/
 !outputs/demo_cache/*
+!outputs/presentation/
+!outputs/presentation/*
 cache/*
 !cache/.gitkeep
 *.tif

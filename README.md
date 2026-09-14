@@ -280,6 +280,33 @@ To ensure presentation reliability, GeoFUSE SentinelGuard includes an offline de
   - `Tile #24` — Complex Terrain Transition (Trust Score: **86.02%** < 86.50% threshold $\rightarrow$ **`LOW TRUST WARNING`**)
 - Selecting Tile #16 or Tile #24 in the dashboard immediately triggers a prominent **Live Demonstration Trust Guard Warning Banner**, visually illustrating how GeoFUSE SentinelGuard flags unreliable super-resolution reconstructions to protect downstream automated decisions.
 
+---
+
+## Project Summary & Presentation Assets (Phase 14)
+
+For the final hackathon submission and rapid review, GeoFUSE SentinelGuard provides a standalone one-page summary document ([`PROJECT_SUMMARY.md`](PROJECT_SUMMARY.md)) and an exported high-resolution presentation gallery in [`outputs/presentation/`](outputs/presentation/):
+
+### Standalone Documentation:
+- **One-Page Project Summary**: [`PROJECT_SUMMARY.md`](PROJECT_SUMMARY.md) — Synthesizes the core problem, engineering approach, empirical results as actually measured, and the explicit scientific honesty statement.
+- **Scientific Honesty Mandate**: Section 4 of [`PROJECT_SUMMARY.md`](PROJECT_SUMMARY.md) details *"What This System Does NOT Claim"*, stating boundaries regarding synthetic degrade-and-recover evaluation, heuristic trust fusion vs. Bayesian posteriors, and absence of fabricated metadata.
+
+### Exported Presentation Assets:
+The figures below are generated directly from verified offline cache artifacts at 150 DPI with custom dark-themed styling matching the Streamlit interface:
+
+| Presentation Figure | Description | Key Concept Illustrated |
+| :--- | :--- | :--- |
+| [`01_side_by_side_super_resolution.png`](outputs/presentation/01_side_by_side_super_resolution.png) | 4-Column Side-by-Side Super Resolution | Reference 10m vs. Bicubic 2x vs. GeoFUSE SR vs. Trust Map overlay with comparative scorecards. |
+| [`02_trust_guard_live_warning.png`](outputs/presentation/02_trust_guard_live_warning.png) | Live Demonstration: Trust Guard Warning | Tile #16 flagged below 86.50% threshold with risk advisory and evidence breakdown. |
+| [`03_evidence_breakdown_signals.png`](outputs/presentation/03_evidence_breakdown_signals.png) | Multi-Source Evidence Signal Breakdown | 4-panel normalized inspection of Disagreement $\sigma$, Stability $\text{Var}$, $\Delta\text{NDVI}$, and Gradient error. |
+| [`04_downstream_footprint_analysis.png`](outputs/presentation/04_downstream_footprint_analysis.png) | Downstream Building Footprint Analysis | Bicubic contours, GeoFUSE SR contours, and Footprint consensus vs. boundary discrepancy. |
+| [`05_auditable_trust_receipt_report.png`](outputs/presentation/05_auditable_trust_receipt_report.png) | Auditable Trust Receipt Report | Structured HTML report card, geospatial metadata, evidence metrics, and JSON schema explorer. |
+
+To regenerate these presentation assets at any time:
+```bash
+python scripts/export_presentation_assets.py
+```
+
+
 
 
 
