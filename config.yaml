@@ -1,0 +1,92 @@
+# GeoFUSE SentinelGuard — Configuration File
+# All paths, hyperparameters, and operational parameters are defined here.
+# Paths are relative to project root unless specified as absolute.
+
+project:
+  name: "GeoFUSE SentinelGuard"
+  version: "0.1.0"
+  description: "Trust-Aware Super Resolution Mapping for Medium-Resolution Satellite Imagery"
+
+# Directory & Dataset Paths (No hardcoded credentials or invented external URLs)
+paths:
+  raw_data_dir: "data/raw"
+  interim_data_dir: "data/interim"
+  processed_data_dir: "data/processed"
+  checkpoints_dir: "checkpoints"
+  outputs_dir: "outputs"
+  cache_dir: "cache"
+  aoi_geojson_path: "data/aoi.geojson"
+
+# Hardware / Compute Settings
+device:
+  mode: "auto"  # Options: "auto", "cuda", "cpu"
+  mixed_precision: true
+  num_workers: 2
+
+# Image Preprocessing & Tiling Hyperparameters
+preprocessing:
+  patch_size: 64         # Input patch size (pixels)
+  stride: 32             # Tiling overlap stride
+  normalize_method: "reflectance_percentile"  # percentile-based normalization
+  clip_min_percentile: 1.0
+  clip_max_percentile: 99.0
+  bands:
+    - "B02"  # Blue
+    - "B03"  # Green
+    - "B04"  # Red
+    - "B08"  # NIR (10m)
+
+# Super-Resolution Model Hyperparameters
+model:
+  architecture: "rcan_light"  # Lightweight SR architecture
+  scale_factor: 2             # Nominally finer-resolution scale (2x or 4x)
+  num_channels: 4             # 4-band input (B02, B03, B04, B08)
+  num_features: 48            # Keep lightweight for RTX 4060 laptop VRAM
+  num_residual_groups: 3
+  num_residual_blocks: 4
+
+# Training Hyperparameters
+training:
+  batch_size: 16
+  epochs: 15
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  loss: "l1_ssim"             # Compound loss: L1 + SSIM
+  save_best_only: true
+  seed: 42
+
+# Super-Resolution Ensemble (Uncertainty Proxy)
+ensemble:
+  enabled: true
+  ensemble_size: 3            # Small ensemble trained sequentially
+  member_seeds: [42, 101, 2024]
+  sequential_training: true   # Train sequentially to preserve memory
+
+# Verification & Stability Checks
+verification:
+  synthetic_degradation:
+    enabled: true
+    blur_kernel_size: 3
+    downsample_factor: 2
+    noise_std: 0.01
+  perturbation_test:
+    enabled: true
+    noise_levels: [0.01, 0.02, 0.05]
+    num_trials: 3
+  spectral_consistency:
+    ndvi_threshold: 0.05      # Flag patches with significant delta-NDVI
+    band_ratio_tolerance: 0.1
+  structural_consistency:
+    ssim_threshold: 0.70
+    edge_gradient_tolerance: 0.15
+
+# Downstream Task Scaffolding
+downstream:
+  task_type: "building_footprint_analysis"
+  threshold: 0.35
+
+# Interactive Streamlit Dashboard
+dashboard:
+  host: "localhost"
+  port: 8501
+  enable_caching: true
