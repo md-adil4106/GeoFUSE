@@ -1065,9 +1065,13 @@ def main():
             st.markdown(f"**Acquisition Date/Time**: `{tile_meta.get('acquisition_datetime', 'Not available')}`")
             st.markdown(f"**Sensor Orbit**: `{tile_meta.get('satellite_orbit_number', 'Not available')}`")
         with meta_col4:
-            st.markdown(f"**Active Patch Index**: `Patch #{selected_idx}`")
+            active_label = f"Patch #{selected_idx}" if st.session_state.get("app_mode") == "Live Analysis" else f"Tile #{selected_idx}"
+            st.markdown(f"**Active Index**: `{active_label}`")
             st.markdown(f"**Ensemble Architecture**: `3x ResidualSRNet (273.7k params)`")
-            st.markdown(f"**Hold-Out Split**: `Southeast Quadrant (Zero Leakage)`")
+            if has_reference:
+                st.markdown(f"**Validation Split**: `Southeast Quadrant (Zero Leakage)`")
+            else:
+                st.markdown(f"**Evaluation Context**: `External Upload (Reference-Free)`")
 
         # Scientific Honesty & Limitations Note
         st.markdown("---")
@@ -1446,6 +1450,12 @@ def main():
                     stat_col4.metric("Relative Ref HR IoU", f"{ref_comp['sr_vs_ref_iou']:.4f}")
                 else:
                     stat_col4.metric("Relative Ref HR IoU", "Not available (No GT)")
+
+                st.caption(
+                    "Note: All downstream metrics report spatial overlap and morphological agreement (IoU) between models. "
+                    "In the absence of certified vector ground-truth building footprints, these metrics measure consensus and relative fidelity, "
+                    "not absolute correctness or ground-truth accuracy."
+                )
             except Exception as e:
                 st.warning(f"Could not render downstream task evaluation: {e}")
         else:
