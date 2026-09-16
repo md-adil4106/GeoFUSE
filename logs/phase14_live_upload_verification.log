@@ -1,0 +1,50 @@
+======================================================================================
+      GeoFUSE SentinelGuard — Phase 14 Live Upload Integration Verification
+======================================================================================
+[GeoFUSE Info] CUDA acceleration available: NVIDIA GeForce RTX 4060 Laptop GPU (8.00 GB VRAM)
+
+[Environment Telemetry]
+  Compute Device      : cuda
+  GPU Name            : NVIDIA GeForce RTX 4060 Laptop GPU
+  Total VRAM          : 8187.5 MiB
+
+[Test 1/6] Loading Phase 13 Final Demo Model from checkpoints/final_demo_v1/...
+[GeoFUSE Info] CUDA acceleration available: NVIDIA GeForce RTX 4060 Laptop GPU (8.00 GB VRAM)
+  Member 0: 356,836 parameters, 6 residual blocks, device=cuda
+  Member 1: 356,836 parameters, 6 residual blocks, device=cuda
+  Member 2: 356,836 parameters, 6 residual blocks, device=cuda
+  [PASS] Model architecture and parameter counts match Phase 13 locked specification.
+
+[Test 2/6] Testing Valid File 1: Single 4-Band GeoTIFF (sample_s2_4band_128px.tif)...
+  [PASS] All 6 pre-flight validation checks passed.
+  Ingested Raster Stack: shape (128, 128, 4), range [0.1253, 0.5604]
+  Extracted Patches    : 4 patches of size 64x64
+[GeoFUSE Live Inference] Executing patch #0 on compute device: cuda
+  [PASS] Live Inference complete in 182.1ms on device: cuda
+         Trust Score: 89.39% | Receipt ID: TR-UPLOAD-PATCH00-T00-1789588542
+
+[Test 3/6] Testing Valid File 2: Multi-File Separate Band GeoTIFFs (4 files)...
+  [PASS] All 6 multi-file pre-flight checks passed.
+  Ingested Raster Stack: shape (512, 512, 4), dtype float32
+  Extracted Patches    : 64 patches of size 64x64
+[GeoFUSE Live Inference] Executing patch #12 on compute device: cuda
+  [PASS] Multi-file live inference complete in 48.5ms on device: cuda
+         Trust Score: 88.43% | Receipt ID: TR-Sentinel-2A-43PGQ-T12-1789588543
+
+[Test 4/6] Testing Error Handling on Intentionally Invalid Files...
+  [PASS] Case A (Corrupt bytes): Properly rejected at Check 1: 'Failed to open raster file: '/vsimem/ee490875-bccf-427b-817f-32c835c8f22b/ee490875-bccf-427b-817f-32c835c8f22b.tif' not recognized as being in a supported file format.'
+  [PASS] Case B (Missing B08): Properly rejected at Check 2: 'Could not identify all 4 required bands from uploaded files. Missing: ['B08']. Uploaded filenames: ['S2A_T43PGQ_20240227T052054_L2A_B02_10m.tif', 'S2A_T43PGQ_20240227T052054_L2A_B03_10m.tif', 'S2A_T43PGQ_20240227T052054_L2A_B04_10m.tif']'
+  [PASS] Case C (Missing CRS): Properly rejected at Check 5: 'Coordinate Reference System (CRS) is missing from GeoTIFF headers.'
+
+[Test 5/6] Confirming Evidence Score & Receipt Form Parity (Demo vs Live Upload)...
+  [PASS] Live upload output structure is strictly identical in form to offline demo path.
+
+[Test 6/6] Running Streamlit AppTest for Live Upload Workflow...
+[GeoFUSE Info] CUDA acceleration available: NVIDIA GeForce RTX 4060 Laptop GPU (8.00 GB VRAM)
+[GeoFUSE Live Inference] Executing patch #0 on compute device: cuda
+[GeoFUSE Live Inference] Executing patch #0 on compute device: cuda
+  [PASS] Streamlit AppTest passed end-to-end with 5 tabs rendered and zero exceptions.
+
+======================================================================================
+  [SUCCESS] PHASE 14 LIVE UPLOAD PIPELINE INTEGRATION FULLY VERIFIED!
+======================================================================================

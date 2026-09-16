@@ -340,6 +340,7 @@ def run_live_pipeline_for_patch(
             "Ensemble model checkpoints could not be loaded from checkpoints/final_demo_v1/ or outputs/checkpoints/. "
             "Please ensure ensemble checkpoint files exist."
         )
+    print(f"[GeoFUSE Live Inference] Executing patch #{patch_idx} on compute device: {device}")
 
     try:
         # 1. Baseline & Ensemble SR Reconstruction
@@ -472,6 +473,7 @@ def run_live_pipeline_for_patch(
             "downstream_comp": downstream_comp,
             "receipt": receipt,
             "has_ground_truth": False,
+            "device_used": str(device),
         }
     except Exception as e:
         import traceback
@@ -1559,6 +1561,8 @@ def main():
             st.markdown(f"• **Radiometric Dtype**: `{meta['dtype']}`")
             st.markdown(f"• **Extracted Patches**: `{total_tiles} total (indexed {len(tiles)})`")
             st.markdown(f"• **Active Patch**: `Patch #{selected_idx} (Y: {py}, X: {px})`")
+            models, config, dev = load_cached_models()
+            st.markdown(f"• **Compute Device**: `{dev}`")
             if meta.get("bounds"):
                 b = meta["bounds"]
                 st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
