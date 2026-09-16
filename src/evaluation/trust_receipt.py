@@ -385,25 +385,25 @@ def render_trust_receipt_html(receipt: Dict[str, Any]) -> str:
     trust_pct = receipt["evidence_metrics"]["fused_trust_score_pct"]
 
     if is_trusted:
-        badge_color = "#10b981"
+        badge_color = "#34d399"
         badge_text = "NOMINAL -- HIGH TRUST"
-        banner_bg = "rgba(16, 185, 129, 0.15)"
-        banner_border = "#10b981"
+        banner_bg = "rgba(52, 211, 153, 0.08)"
+        banner_border = "#059669"
     else:
-        badge_color = "#ef4444"
+        badge_color = "#f87171"
         badge_text = "WARNING -- LOW TRUST"
-        banner_bg = "rgba(239, 68, 68, 0.15)"
-        banner_border = "#ef4444"
+        banner_bg = "rgba(248, 113, 113, 0.08)"
+        banner_border = "#dc2626"
 
     warnings = receipt["trust_evaluation"]["warnings_and_advisories"]
     warnings_html = ""
     if warnings:
-        warnings_html = "<div style='margin-top:12px; padding:10px; background:#2a1818; border-left:4px solid #ef4444; border-radius:4px;'>"
+        warnings_html = "<div style='margin-top:12px; padding:10px 14px; background:#1c1417; border-left:3px solid #dc2626; border-radius:2px;'>"
         for w in warnings:
-            warnings_html += f"<p style='color:#fca5a5; margin:4px 0; font-size:13px;'>⚠️ {w}</p>"
+            warnings_html += f"<p style='color:#fca5a5; margin:4px 0; font-size:12.5px; font-family:monospace;'>[ADVISORY] {w}</p>"
         warnings_html += "</div>"
     else:
-        warnings_html = "<div style='margin-top:12px; padding:8px 12px; background:#18281e; border-left:4px solid #10b981; border-radius:4px;'><p style='color:#6ee7b7; margin:0; font-size:13px;'>✅ All multi-criteria verification metrics satisfied.</p></div>"
+        warnings_html = "<div style='margin-top:12px; padding:8px 14px; background:#121a16; border-left:3px solid #059669; border-radius:2px;'><p style='color:#86efac; margin:0; font-size:12.5px; font-family:monospace;'>[VERIFIED] All multi-criteria verification metrics satisfied within operational tolerances.</p></div>"
 
     res_raw = receipt["tile_metadata"].get("spatial_resolution_meters")
     recon_raw = receipt["tile_metadata"].get("reconstructed_resolution_meters")
@@ -415,53 +415,53 @@ def render_trust_receipt_html(receipt: Dict[str, Any]) -> str:
         res_display = f"<em>{res_raw or 'Not available'}</em>"
 
     html = f"""
-    <div style="background-color:#1e1e24; border:1px solid #333; border-radius:8px; padding:18px; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#eee; margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:14px;">
+    <div style="background-color:#151821; border:1px solid #262c38; border-radius:4px; padding:18px; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#d1d5db; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #262c38; padding-bottom:10px; margin-bottom:14px;">
             <div>
-                <h3 style="margin:0; color:#fff; font-size:18px;">🛰️ GeoFUSE Trust Receipt</h3>
-                <span style="font-size:12px; color:#888;">Receipt ID: <code>{receipt['receipt_id']}</code></span>
+                <h3 style="margin:0; color:#f3f4f6; font-size:16px; letter-spacing:0.3px;">🛰️ GeoFUSE Trust Receipt</h3>
+                <span style="font-size:11.5px; color:#8590a6; font-family:monospace;">RECEIPT ID: {receipt['receipt_id']}</span>
             </div>
             <div style="text-align:right;">
-                <span style="background:{badge_color}; color:#fff; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">{badge_text}</span>
-                <div style="font-size:18px; font-weight:bold; color:{badge_color}; margin-top:4px;">Trust Score: {trust_pct:.2f}%</div>
+                <span style="border:1px solid {badge_color}; color:{badge_color}; background:transparent; padding:2px 8px; border-radius:2px; font-size:11px; font-weight:600; font-family:monospace; letter-spacing:0.5px;">{badge_text}</span>
+                <div style="font-size:15px; font-weight:600; color:{badge_color}; margin-top:4px; font-family:monospace;">Trust Score: {trust_pct:.2f}%</div>
             </div>
         </div>
 
-        <div style="background:{banner_bg}; border:1px solid {banner_border}; border-radius:6px; padding:10px 14px; margin-bottom:14px;">
-            <p style="margin:0; font-size:13.5px; font-weight:500;">{receipt['trust_evaluation']['summary']}</p>
+        <div style="background:{banner_bg}; border:1px solid {banner_border}; border-radius:3px; padding:10px 14px; margin-bottom:14px;">
+            <p style="margin:0; font-size:13px; font-weight:400; color:#e5e7eb;">{receipt['trust_evaluation']['summary']}</p>
         </div>
 
         {warnings_html}
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:16px;">
-            <div style="background:#17171c; padding:12px; border-radius:6px;">
-                <h4 style="margin:0 0 8px 0; color:#93c5fd; font-size:14px;">📡 Satellite & Tile Metadata</h4>
-                <table style="width:100%; font-size:12.5px; border-collapse:collapse;">
-                    <tr><td style="color:#888; padding:3px 0;">Platform:</td><td><strong>{receipt['tile_metadata']['platform']}</strong></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">MGRS Tile:</td><td><strong>{receipt['tile_metadata']['mgrs_tile']}</strong></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Acquisition Date:</td><td>{receipt['tile_metadata']['acquisition_datetime']}</td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Source CRS:</td><td><code>{receipt['tile_metadata']['source_crs']}</code></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Resolution:</td><td>{res_display}</td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Cloud Cover:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['cloud_cover_percentage']}</em></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Sun Elevation:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['sun_elevation_angle_deg']}</em></td></tr>
+            <div style="background:#0e1117; border:1px solid #262c38; padding:12px; border-radius:3px;">
+                <h4 style="margin:0 0 8px 0; color:#93c5fd; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Satellite & Spatial Metadata</h4>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                    <tr><td style="color:#8590a6; padding:3px 0;">Platform:</td><td><strong>{receipt['tile_metadata']['platform']}</strong></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">MGRS Tile:</td><td><strong>{receipt['tile_metadata']['mgrs_tile']}</strong></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Acquisition Date:</td><td>{receipt['tile_metadata']['acquisition_datetime']}</td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Source CRS:</td><td><code>{receipt['tile_metadata']['source_crs']}</code></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Resolution:</td><td>{res_display}</td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Cloud Cover:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['cloud_cover_percentage']}</em></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Sun Elevation:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['sun_elevation_angle_deg']}</em></td></tr>
                 </table>
             </div>
 
-            <div style="background:#17171c; padding:12px; border-radius:6px;">
-                <h4 style="margin:0 0 8px 0; color:#c084fc; font-size:14px;">🧬 Model Provenance & Verification</h4>
-                <table style="width:100%; font-size:12.5px; border-collapse:collapse;">
-                    <tr><td style="color:#888; padding:3px 0;">Architecture:</td><td><strong>{receipt['model_provenance']['architecture']}</strong></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Parameters:</td><td>{receipt['model_provenance']['parameter_count']:,} (~0.27M)</td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Ensemble Size:</td><td>{receipt['model_provenance']['ensemble_size']} Members</td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Validation Split:</td><td>Strict Southeast Quadrant</td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Gradient Corr (r):</td><td><strong>{receipt['evidence_metrics']['structural_consistency']['gradient_correlation_r']:.4f}</strong></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Mean &Delta;NDVI:</td><td><strong>{receipt['evidence_metrics']['spectral_consistency']['mean_delta_ndvi']:.4f}</strong></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Downstream IoU:</td><td><strong>{receipt['evidence_metrics']['downstream_task_evaluation']['bicubic_vs_sr_iou']:.4f}</strong></td></tr>
+            <div style="background:#0e1117; border:1px solid #262c38; padding:12px; border-radius:3px;">
+                <h4 style="margin:0 0 8px 0; color:#c084fc; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Model Provenance & Verification</h4>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                    <tr><td style="color:#8590a6; padding:3px 0;">Architecture:</td><td><strong>{receipt['model_provenance']['architecture']}</strong></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Parameters:</td><td>{receipt['model_provenance']['parameter_count']:,} (~0.27M)</td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Ensemble Size:</td><td>{receipt['model_provenance']['ensemble_size']} Members</td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Validation Split:</td><td>Strict Southeast Quadrant</td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Gradient Corr (r):</td><td><strong>{receipt['evidence_metrics']['structural_consistency']['gradient_correlation_r']:.4f}</strong></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Mean &Delta;NDVI:</td><td><strong>{receipt['evidence_metrics']['spectral_consistency']['mean_delta_ndvi']:.4f}</strong></td></tr>
+                    <tr><td style="color:#8590a6; padding:3px 0;">Downstream IoU:</td><td><strong>{receipt['evidence_metrics']['downstream_task_evaluation']['bicubic_vs_sr_iou']:.4f}</strong></td></tr>
                 </table>
             </div>
         </div>
 
-        <div style="margin-top:14px; padding-top:10px; border-top:1px solid #2d2d34; font-size:11.5px; color:#777;">
+        <div style="margin-top:14px; padding-top:10px; border-top:1px solid #262c38; font-size:11.5px; color:#8590a6;">
             <p style="margin:0;"><strong>Scientific Transparency Note:</strong> {receipt['scientific_transparency_mandate']['heuristic_nature']}</p>
         </div>
     </div>

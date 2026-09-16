@@ -20,6 +20,8 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 import cv2
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
@@ -523,30 +525,189 @@ def extract_zoomed_crop(
 def main():
     st.set_page_config(
         page_title="GeoFUSE SentinelGuard",
-        page_icon="🛰️",
         layout="wide",
         initial_sidebar_state="expanded",
+    )
+
+    # Inject Scientific GIS / Monitoring Tool Custom CSS
+    st.markdown(
+        """
+        <style>
+        :root {
+            --bg-main: #0e1117;
+            --bg-surface: #151821;
+            --bg-surface-elevated: #1b202c;
+            --border-subtle: #262c38;
+            --border-active: #3b82f6;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #4a90e2;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        }
+
+        /* Typography Normalization */
+        html, body, [class*="css"] {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #e6edf3;
+        }
+
+        h1, h2, h3, h4 {
+            font-weight: 600 !important;
+            letter-spacing: -0.015em;
+        }
+        h1 { font-size: 1.45rem !important; margin-bottom: 0.2rem !important; }
+        h2 { font-size: 1.18rem !important; margin-bottom: 0.3rem !important; }
+        h3 { font-size: 1.02rem !important; }
+        h4 { font-size: 0.90rem !important; }
+
+        .stCaption, .sci-caption {
+            font-size: 0.80rem !important;
+            color: #8b949e !important;
+            line-height: 1.45 !important;
+        }
+
+        /* Restrained Scientific Evidence Banner */
+        .sci-evidence-banner {
+            background-color: #121620;
+            border: 1px solid #283042;
+            border-left: 4px solid #4a90e2;
+            border-radius: 3px;
+            padding: 11px 16px;
+            margin-top: 4px;
+            margin-bottom: 16px;
+        }
+        .sci-evidence-banner.advisory {
+            border-left: 4px solid #eab308;
+            background-color: #1a1712;
+            border-color: #3b3221;
+        }
+        .sci-evidence-title {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #f0f6fc;
+            margin-bottom: 3px;
+        }
+        .sci-evidence-desc {
+            font-size: 0.81rem;
+            color: #8b949e;
+            line-height: 1.42;
+        }
+
+        /* Scientific Status Indicator */
+        .sci-status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background-color: #131720;
+            border: 1px solid #232a38;
+            border-radius: 3px;
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            font-family: var(--font-mono);
+            color: #94a3b8;
+            margin-top: 6px;
+        }
+
+        /* Muted Monospace Image Labels */
+        .sci-image-label {
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: #8b949e;
+            margin-top: 4px;
+            margin-bottom: 6px;
+            line-height: 1.35;
+        }
+
+        /* Compact Evidence Horizontal Progress Bar */
+        .sci-bar-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 0.82rem;
+        }
+        .sci-bar-label {
+            color: #c9d1d9;
+            font-weight: 500;
+        }
+        .sci-bar-val {
+            font-family: var(--font-mono);
+            color: #8b949e;
+            font-size: 0.78rem;
+        }
+        .sci-bar-container {
+            background-color: #161a24;
+            border: 1px solid #252d3d;
+            border-radius: 2px;
+            height: 7px;
+            width: 100%;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .sci-bar-fill {
+            height: 100%;
+            background-color: #4a90e2;
+            border-radius: 1px;
+        }
+
+        /* Legend Box */
+        .sci-legend-box {
+            background-color: #12151d;
+            border: 1px solid #222733;
+            border-radius: 3px;
+            padding: 9px 13px;
+            margin-top: 6px;
+            margin-bottom: 12px;
+            font-size: 0.79rem;
+            color: #8b949e;
+            line-height: 1.45;
+        }
+
+        /* Unavailable Reference Panel */
+        .sci-unavailable-card {
+            background-color: #12151d;
+            border: 1px dashed #282f3f;
+            border-radius: 3px;
+            padding: 30px 10px;
+            text-align: center;
+            color: #8b949e;
+            font-size: 0.82rem;
+            min-height: 155px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-top: 4px;
+            margin-bottom: 4px;
+        }
+
+        /* Tab Bar Clean Styling */
+        button[data-baseweb="tab"] {
+            font-size: 0.86rem !important;
+            font-weight: 500 !important;
+            padding: 8px 16px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
     # Mode resolution & session-state flag
     if "app_mode" not in st.session_state:
         st.session_state["app_mode"] = "Demo Mode"
 
-    # Header & Banner with persistent mode indicator
+    # Header with restrained scientific layout
     header_col1, header_col2 = st.columns([3, 1])
     with header_col1:
-        st.title("🛰️ GeoFUSE SentinelGuard")
-        st.markdown(
-            "**Trust-Aware Super-Resolution Mapping from Medium-Resolution Sentinel-2 Imagery**  \n"
-            "*" "Sharper imagery, with evidence attached." "*"
-        )
+        st.title("GeoFUSE SentinelGuard")
+        st.caption("Trust-Aware Super-Resolution for Sentinel-2 Imagery · Sharper imagery, with evidence attached.")
     with header_col2:
         if st.session_state.get("app_mode") == "Live Analysis":
             st.markdown(
                 """
-                <div style="background-color: #211c15; border: 1px solid #d29922; border-radius: 20px; padding: 6px 14px; text-align: center; margin-top: 15px;">
-                    <span style="color: #f0883e; font-weight: 700; font-size: 0.95rem;">⚡ ● Live Analysis</span><br/>
-                    <span style="color: #8b949e; font-size: 0.78rem;">User Uploaded Imagery</span>
+                <div class="sci-status-indicator">
+                    <span style="color: #f59e0b;">●</span> Mode: Live User Upload
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -554,24 +715,16 @@ def main():
         else:
             st.markdown(
                 """
-                <div style="background-color: #16241a; border: 1px solid #238636; border-radius: 20px; padding: 6px 14px; text-align: center; margin-top: 15px;">
-                    <span style="color: #3fb950; font-weight: 700; font-size: 0.95rem;">🟢 ● Demo Mode</span><br/>
-                    <span style="color: #8b949e; font-size: 0.78rem;">Precomputed Offline Cache</span>
+                <div class="sci-status-indicator">
+                    <span style="color: #38bdf8;">●</span> Mode: Demo Scene (Offline Cache)
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    st.info(
-        "**Scientific Transparency Mandate**: Reconstructions are accompanied by multi-criteria empirical evidence "
-        "(ensemble disagreement, perturbation stability, spectral NDVI fidelity, structural gradient checks). "
-        "The Trust/Risk Map is an **empirical heuristic proxy**, not a calibrated Bayesian posterior probability. "
-        "Downstream metrics report **Bicubic-vs-SR Agreement** in the absence of independent vector ground truth."
-    )
-
     # 1. Sidebar Controls & Entry Points
-    st.sidebar.header("🕹️ Controls & Settings")
-    st.sidebar.markdown("### 🛰️ Analyze Satellite Imagery")
+    st.sidebar.header("Controls & Settings")
+    st.sidebar.markdown("### Imagery Source")
     imagery_source = st.sidebar.radio(
         "Select Workflow Mode:",
         options=["Use Demo Scene", "Upload GeoTIFF"],
@@ -591,8 +744,8 @@ def main():
     is_false_color = "False-Color" in color_mode
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("🔬 Evidence Inspection Toggles")
-    show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=False)
+    st.sidebar.subheader("Evidence Inspection Toggles")
+    show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=True)
     show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
 
     # -------------------------------------------------------------------------
@@ -600,7 +753,7 @@ def main():
     # -------------------------------------------------------------------------
     if imagery_source == "Upload GeoTIFF":
         st.sidebar.markdown("---")
-        st.sidebar.subheader("📤 Upload Raster")
+        st.sidebar.subheader("Upload Raster")
         uploaded_files = st.sidebar.file_uploader(
             "Upload Sentinel-2 GeoTIFF(s):",
             type=["tif", "tiff", "jp2"],
@@ -608,7 +761,7 @@ def main():
             help="Upload either a single 4-band GeoTIFF (B02, B03, B04, B08) or 4 individual band files.",
         )
 
-        st.markdown("### 📤 Upload Sentinel-2 GeoTIFF for Live Analysis")
+        st.markdown("### Upload Sentinel-2 GeoTIFF for Live Analysis")
 
         if not uploaded_files:
             st.info(
@@ -623,33 +776,30 @@ def main():
         try:
             val_result = validate_uploaded_raster(uploaded_files)
         except Exception as e:
-            st.error(f"🚨 **Raster Validation Error**: Failed to process uploaded file: {str(e)}")
+            st.error(f"**Raster Validation Error**: Failed to process uploaded file: {str(e)}")
             st.stop()
 
         # Render validation checklist
-        st.markdown("#### 📋 Pre-Flight Integrity Checklist")
-        val_col1, val_col2 = st.columns(2)
-        for i, chk in enumerate(val_result["checks"]):
-            target_col = val_col1 if i % 2 == 0 else val_col2
-            with target_col:
+        st.markdown("#### Pre-Flight Integrity Checklist")
+        chk_cols = st.columns(3)
+        for i, chk in enumerate(val_result.get("checks", [])):
+            with chk_cols[i % 3]:
                 if chk["passed"]:
-                    st.markdown(f"✅ **{chk['name']}**  \n*{chk['message']}*")
+                    st.markdown(f"**[PASS] {chk['name']}**  \n*{chk['message']}*")
                 else:
-                    st.markdown(f"❌ **{chk['name']}**  \n:red[*{chk['message']}*]")
+                    st.markdown(f"**[FAIL] {chk['name']}**  \n:red[*{chk['message']}*]")
 
-        # Block progression if validation fails
         if not val_result["is_valid"]:
             st.error(
-                f"🚨 **Upload Validation Failed**: {val_result.get('error_message')}  \n\n"
-                "Progression to super-resolution inference is blocked until a valid Sentinel-2 raster is provided. "
-                "Please review the failed check above and re-upload compatible GeoTIFF files."
+                f"**Upload Validation Failed**: {val_result.get('error_message')}  \n\n"
+                "Please review the checklist above and upload a valid Sentinel-2 GeoTIFF matching project specifications."
             )
             st.stop()
 
-        # Render Compact Metadata Panel upon successful validation
+        # Metadata display
         meta = val_result["metadata"]
-        st.success("✅ **Upload Validation Successful**: All 6 pre-flight integrity checks passed!")
-        st.markdown("#### 🛰️ Verified Imagery Metadata")
+        st.success("**Upload Validation Successful**: All 6 pre-flight integrity checks passed.")
+        st.markdown("#### Verified Imagery Metadata")
         m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
         m_col1.metric("Dimensions", f"{meta['height']} × {meta['width']} px")
         m_col2.metric("Resolution (GSD)", f"{meta['resolution'][0]:.1f}m × {meta['resolution'][1]:.1f}m")
@@ -661,14 +811,14 @@ def main():
         try:
             uploaded_stack, stack_meta = load_uploaded_stack(uploaded_files, val_result)
         except Exception as e:
-            st.error(f"🚨 **Raster Ingestion Error**: Failed to load validated raster into memory: {str(e)}")
+            st.error(f"**Raster Ingestion Error**: Failed to load validated raster into memory: {str(e)}")
             st.stop()
 
         # Check model availability
         models, config, device = load_cached_models()
         if models is None:
             st.error(
-                "⚠️ **Live Inference Unavailable in this Environment**: Ensemble model checkpoints were not found "
+                "**Live Inference Unavailable in this Environment**: Ensemble model checkpoints were not found "
                 "in `outputs/checkpoints/` or compute device memory is exhausted.  \n\n"
                 "**Safety Guard**: A precomputed result is never presented as if it came from your uploaded file. "
                 "To explore verified system outputs, switch to **'Use Demo Scene'** in the sidebar."
@@ -679,7 +829,7 @@ def main():
         raw_tiles = extract_tiles(uploaded_stack, patch_size=64, stride=64)
         total_tiles = len(raw_tiles)
         if total_tiles == 0:
-            st.error("🚨 **Tiling Error**: No valid 64×64 patches could be extracted from this raster.")
+            st.error("**Tiling Error**: No valid 64×64 patches could be extracted from this raster.")
             st.stop()
 
         max_interactive_tiles = 36
@@ -687,7 +837,7 @@ def main():
 
         if total_tiles > max_interactive_tiles:
             st.caption(
-                f"ℹ️ **Tiling & Performance Safeguard**: Uploaded scene ({meta['height']}×{meta['width']} px) contains {total_tiles} "
+                f"**Tiling & Performance Safeguard**: Uploaded scene ({meta['height']}×{meta['width']} px) contains {total_tiles} "
                 f"non-overlapping 64×64 patches. For smooth browser responsiveness, the first {max_interactive_tiles} "
                 "patches are indexed for interactive selection."
             )
@@ -698,7 +848,7 @@ def main():
         }
 
         st.sidebar.markdown("---")
-        st.sidebar.subheader("🎯 Patch Selection")
+        st.sidebar.subheader("Patch Selection")
         selected_idx = st.sidebar.selectbox(
             "Select 64×64 Patch to Analyze:",
             options=list(tile_options.keys()),
@@ -730,12 +880,12 @@ def main():
             if meta.get("bounds"):
                 b = meta["bounds"]
                 st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
-            st.success("⚡ Live Inference pipeline ready for selected patch.")
+            st.success("Live inference pipeline ready for selected patch.")
 
         # Execute live pipeline for selected patch
         data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, meta)
         if data is None:
-            st.error(f"🚨 **Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.")
+            st.error(f"**Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.")
             st.stop()
 
     else:
@@ -756,7 +906,7 @@ def main():
                 if is_trusted:
                     badge = f"High Trust: {score:.1f}%"
                 else:
-                    badge = f"⚠️ Low Trust Warning: {score:.1f}%"
+                    badge = f"Advisory: {score:.1f}%"
                 tile_options[t_idx] = f"Tile #{t_idx} -- {desc} ({badge})"
         else:
             # Fallback tile list
@@ -765,16 +915,16 @@ def main():
             tile_options = {
                 0: "Tile #0 -- Central Settlement Cluster (High Trust: 86.8%)",
                 num_tiles // 3: f"Tile #{num_tiles // 3} -- Mixed Agricultural & Roads (High Trust: 86.7%)",
-                (2 * num_tiles) // 3: f"Tile #{(2 * num_tiles) // 3} -- Rural River Corridor (⚠️ Low Trust Warning: 86.4%)",
-                num_tiles - 1: f"Tile #{num_tiles - 1} -- Complex Terrain Transition (⚠️ Low Trust Warning: 86.0%)",
+                (2 * num_tiles) // 3: f"Tile #{(2 * num_tiles) // 3} -- Rural River Corridor (Advisory: 86.4%)",
+                num_tiles - 1: f"Tile #{num_tiles - 1} -- Complex Terrain Transition (Advisory: 86.0%)",
             }
 
         # Demo mode status indicator
         if is_offline_cache:
-            st.sidebar.success("🟢 **Demo Mode: Offline Cache Active**")
+            st.sidebar.success("**Demo Mode: Offline Cache Active**")
             st.sidebar.caption("Precomputed offline assets loaded — sub-10ms response, zero live inference.")
         else:
-            st.sidebar.info("⚡ **Live Inference Mode Active**")
+            st.sidebar.info("**Live Inference Mode Active**")
             st.sidebar.caption("Executing live forward passes on compute device.")
 
         selected_idx = st.sidebar.selectbox(
@@ -787,7 +937,7 @@ def main():
         data = run_cached_pipeline(selected_idx)
         if data is None:
             st.error(
-                f"🚨 **Demo Asset Not Found**: Could not retrieve precomputed assets or execute live inference for Tile #{selected_idx}.  \n\n"
+                f"**Demo Asset Not Found**: Could not retrieve precomputed assets or execute live inference for Tile #{selected_idx}.  \n\n"
                 "**Resolution**: Run the demo precomputation script to generate all offline demo assets:  \n"
                 "```bash\npython scripts/precompute_demo_cache.py\n```"
             )
@@ -839,107 +989,55 @@ def main():
     else:
         trust_overlay = sr_rgb.copy()
 
-    # Tabs: Tab 1 = Comparative Inspection, Tab 2 = Auditable Trust Receipt
-    tab1, tab2 = st.tabs([
-        "🔍 Super-Resolution & Evidence Inspection",
-        "📜 Auditable Trust Receipt (JSON & HTML)",
+    # -------------------------------------------------------------------------
+    # Guided Workflow Tabs (Phase E: Restrained Scientific Navigation)
+    # -------------------------------------------------------------------------
+    tab_overview, tab_comparison, tab_evidence, tab_downstream, tab_receipt = st.tabs([
+        "Overview",
+        "Comparison",
+        "Evidence",
+        "Downstream Impact",
+        "Trust Receipt",
     ])
 
-    with tab1:
-        # Live Demonstration Callout Banner (Highlights Trust Guard Mechanism Working)
-        if not is_trusted:
-            st.warning(
-                f"🚨 **LIVE DEMONSTRATION — TRUST GUARD WARNING TRIGGERED**  \n\n"
-                f"**Tile #{selected_idx} Status: LOW TRUST WARNING FLAGGED**  \n"
-                f"Composite Trust Score (**{score_pct:.2f}%**) falls below the configured operational threshold (**{min_thresh:.2f}%**).  \n"
-                "• *Reason*: The system detected elevated inter-model disagreement or radiometric inconsistency in this geographic sub-region.  \n"
-                "• *Operational Action*: Downstream automated extraction (such as building footprints) should require manual human-in-the-loop review."
+    # -------------------------------------------------------------------------
+    # TAB 1: Overview
+    # -------------------------------------------------------------------------
+    with tab_overview:
+        # Qualified Scientific Evidence Banner
+        if is_trusted:
+            st.markdown(
+                f"""
+                <div class="sci-evidence-banner">
+                    <div class="sci-evidence-title">Composite Evidence Score: {score_pct:.2f} / 100</div>
+                    <div class="sci-evidence-desc">
+                        Heuristic multi-criteria reliability indicator &mdash; not a calibrated probability of correctness.
+                        Reconstruction satisfies empirical consistency thresholds across epistemic uncertainty, perturbation stability, and spectral fidelity.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
         else:
-            st.success(
-                f"✅ **HIGH TRUST APPROVED** — Composite Trust Score (**{score_pct:.2f}%**) exceeds the operational threshold (**{min_thresh:.2f}%**). "
-                "Reconstruction satisfies multi-criteria empirical reliability benchmarks."
+            deficit = round(min_thresh - score_pct, 2)
+            st.markdown(
+                f"""
+                <div class="sci-evidence-banner advisory">
+                    <div class="sci-evidence-title">Composite Evidence Score: {score_pct:.2f} / 100 &mdash; Operational Advisory</div>
+                    <div class="sci-evidence-desc">
+                        Score falls {deficit:.2f} points below operational baseline ({min_thresh:.2f}).
+                        Elevated boundary disagreement or spectral deviation detected in this geographic sub-region.
+                        Downstream automated extraction should require manual human-in-the-loop review.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-        # Main Side-by-Side View (5 Columns: Actual Input, Bicubic, GeoFUSE, Reference, Trust Map)
-        st.markdown("### 🖼️ Side-by-Side Super-Resolution & Trust Verification")
-        st.caption(
-            "Compare the actual degraded input given to the model against the standard bicubic baseline, "
-            "the GeoFUSE neural reconstruction, the clean un-degraded reference target, and the fused reliability map."
-        )
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        with col1:
-            st.markdown("#### 1. Actual Model Input")
-            st.caption("🔍 **Input Fed to Model (20m GSD)**")
-            st.image(lr_rgb_display, caption="Input (64×64 px, 2x NN grid)", use_container_width=True)
-            st.markdown("`[INPUT]` Real Sentinel-2 observed tile" if not has_reference else "`[INPUT]` Optical blur + 2x downsample + noise")
-
-        with col2:
-            st.markdown("#### 2. Bicubic Baseline")
-            st.caption("📉 **Standard 2x Interpolation (10m)**")
-            if has_reference and bic_psnr is not None:
-                st.image(bic_rgb, caption=f"Bicubic (128×128 px) | {bic_psnr:.2f} dB", use_container_width=True)
-                st.markdown(f"`[BASELINE]` PSNR: **{bic_psnr:.2f} dB** | SSIM: **{bic_ssim:.4f}**")
-            else:
-                st.image(bic_rgb, caption="Bicubic Baseline (128×128 px)", use_container_width=True)
-                st.markdown("`[BASELINE]` Standard 2x interpolation")
-
-        with col3:
-            st.markdown("#### 3. GeoFUSE SR (Ours)")
-            st.caption("🚀 **Ensemble Reconstruction (10m)**")
-            if has_reference and sr_psnr is not None:
-                st.image(sr_rgb, caption=f"GeoFUSE (128×128 px) | {sr_psnr:.2f} dB", use_container_width=True)
-                st.markdown(f"`[SR MODEL]` PSNR: **{sr_psnr:.2f} dB** | SSIM: **{sr_ssim:.4f}**")
-            else:
-                st.image(sr_rgb, caption="GeoFUSE SR Ensemble (128×128 px)", use_container_width=True)
-                st.markdown("`[SR MODEL]` 2x deep residual ensemble")
-
-        with col4:
-            st.markdown("#### 4. Clean Reference")
-            st.caption("🎯 **Ground Truth Target (10m)**")
-            if hr_rgb is not None:
-                st.image(hr_rgb, caption="Pre-degradation Target (128×128 px)", use_container_width=True)
-                st.markdown("`[TARGET]` Unseen reference for validation only")
-            else:
-                st.markdown(
-                    """
-                    <div style="background-color: #1a1e24; border: 1px dashed #30363d; border-radius: 8px; padding: 26px 12px; text-align: center; margin-top: 10px; margin-bottom: 12px; min-height: 155px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                        <div style="font-size: 1.4rem; margin-bottom: 4px;">🎯</div>
-                        <div style="font-weight: 600; color: #f0f6fc; font-size: 0.85rem;">Reference Unavailable</div>
-                        <div style="color: #8b949e; font-size: 0.75rem; margin-top: 4px;">Reference: not available for uploaded imagery.</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                st.markdown("`[REAL INFERENCE]` Reference-free operational setting")
-
-        with col5:
-            st.markdown("#### 5. Trust / Risk Map")
-            st.caption("🛡️ **Heuristic Reliability Map**")
-            st.image(trust_overlay, caption=f"Trust Score: {score_pct:.2f}%", use_container_width=True)
-            st.markdown(f"`[{'APPROVED' if is_trusted else 'FLAGGED'}]` Risk Overlay (RdYlGn)")
-
-        # Clear Green/Yellow/Red Trust/Risk Legend
-        st.markdown(
-            """
-            <div style="background-color: #1a1e24; border: 1px solid #30363d; border-radius: 8px; padding: 10px 16px; margin-top: 8px; margin-bottom: 16px;">
-                <div style="font-weight: 600; font-size: 0.90rem; margin-bottom: 6px;">🛡️ Trust & Risk Map Legend (Color Scheme: RdYlGn)</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.83rem;">
-                    <div><span style="color: #4CAF50; font-weight: bold;">🟢 High Trust (≥ 86.5%)</span>: Strong ensemble consensus, stable under perturbation, verified spectral & edge consistency. Approved for automated processing.</div>
-                    <div><span style="color: #FFC107; font-weight: bold;">🟡 Moderate Risk (75.0% – 86.5%)</span>: Minor edge ambiguity or slight perturbation sensitivity. Operational caution recommended.</div>
-                    <div><span style="color: #F44336; font-weight: bold;">🔴 High Risk / Low Trust (&lt; 75.0%)</span>: Elevated model disagreement, spectral shift, or boundary hallucination hazard. Flagged for human review.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Summary Reliability Scorecards
-        st.markdown("### 📊 Quantitative Reliability Metrics")
+        # Primary Reliability Metrics
+        st.markdown("#### Primary Reliability Metrics")
         m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Trust Score", f"{score_pct:.2f}%", delta=f"{score_pct - 50.0:.1f}%")
+        m1.metric("Evidence Score", f"{score_pct:.2f} / 100")
         m2.metric("Mean Composite Risk", f"{fusion_result.get('mean_risk_score', 0.0):.4f}")
         disag_mean = fusion_result.get("component_stats", {}).get("disagreement", {}).get("raw_mean", 0.0)
         m3.metric("Disagreement Std (σ)", f"{disag_mean:.5f}")
@@ -948,13 +1046,129 @@ def main():
         grad_corr = data.get("edge_metrics", {}).get("gradient_correlation", 0.0)
         m5.metric("Edge Grad Corr (r)", f"{grad_corr:.4f}")
 
-        # Zoomed-In Inspection: Bicubic vs. GeoFUSE SR (High-Frequency Detail Analysis)
+        # Scene Provenance & Metadata Grid
         st.markdown("---")
-        st.markdown("### 🔬 Zoomed-In Detail: Bicubic vs. GeoFUSE SR")
+        st.markdown("#### Scene Provenance & Technical Metadata")
+        tile_meta = receipt.get("tile_metadata", {})
+        meta_col1, meta_col2, meta_col3, meta_col4 = st.columns(4)
+        with meta_col1:
+            st.markdown(f"**Platform / Product**: `{tile_meta.get('platform', 'Not available')}` ({tile_meta.get('product_level', 'Not available')})")
+            st.markdown(f"**MGRS Tile ID**: `{tile_meta.get('mgrs_tile', 'Not available')}`")
+        with meta_col2:
+            res_in = tile_meta.get("spatial_resolution_meters", "Not available")
+            res_out = tile_meta.get("reconstructed_resolution_meters", "Not available")
+            st.markdown(f"**Native Spatial GSD**: `{res_in}m`" if isinstance(res_in, (int, float)) else f"**Native Spatial GSD**: `{res_in}`")
+            st.markdown(f"**Reconstructed GSD**: `{res_out}m` (2x SR)" if isinstance(res_out, (int, float)) else f"**Reconstructed GSD**: `{res_out}`")
+            st.markdown(f"**Target Bands**: `B02 (Blue), B03 (Green), B04 (Red), B08 (NIR)`")
+        with meta_col3:
+            st.markdown(f"**Coordinate System**: `{tile_meta.get('source_crs', 'Not available')}`")
+            st.markdown(f"**Acquisition Date/Time**: `{tile_meta.get('acquisition_datetime', 'Not available')}`")
+            st.markdown(f"**Sensor Orbit**: `{tile_meta.get('satellite_orbit_number', 'Not available')}`")
+        with meta_col4:
+            st.markdown(f"**Active Patch Index**: `Patch #{selected_idx}`")
+            st.markdown(f"**Ensemble Architecture**: `3x ResidualSRNet (273.7k params)`")
+            st.markdown(f"**Hold-Out Split**: `Southeast Quadrant (Zero Leakage)`")
+
+        # Scientific Honesty & Limitations Note
+        st.markdown("---")
+        st.markdown(
+            """
+            <div class="sci-legend-box" style="margin-top: 14px; padding: 14px 16px;">
+                <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 6px;">Scientific Honesty & Operational Limitations Note</div>
+                <ul style="margin: 0; padding-left: 18px; color: #8b949e; line-height: 1.55;">
+                    <li><b>Nominally Finer-Resolution Reconstruction</b>: The super-resolved imagery represents an algorithmic reconstruction evaluated within a synthetic degrade-and-recover setting (2x downsampling, PSF blur, sensor noise). It demonstrates empirical fidelity against bicubic interpolation, but does <b>not</b> constitute mathematical proof of true physical signal recovery in unconstrained deployments.</li>
+                    <li><b>Heuristic Evidence Indicator</b>: The composite Trust Score is an <b>empirical heuristic combination</b> of normalized proxies (uncertainty, stability, spectral, and structural checks). It is an operational decision-support tool, <b>not</b> a calibrated Bayesian posterior probability or certainty certificate.</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # -------------------------------------------------------------------------
+    # TAB 2: Comparison
+    # -------------------------------------------------------------------------
+    with tab_comparison:
+        st.markdown("#### Side-by-Side Super-Resolution & Trust Verification")
         st.caption(
-            "At 1x full-tile view (128×128 px), subtle edge sharpening can be difficult to distinguish on high-DPI displays. "
-            "Below is a 4x nearest-neighbor magnified crop comparing the actual input pixels, bicubic interpolation blur, "
-            "GeoFUSE edge recovery, the clean reference, and an amplified high-frequency difference map."
+            "Evaluation of the actual degraded model input against standard bicubic interpolation, "
+            "the GeoFUSE neural ensemble reconstruction, the clean reference target, and the fused reliability map."
+        )
+
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            st.markdown("**1. Actual Model Input**")
+            st.caption("20m GSD (64×64 px)")
+            st.image(lr_rgb_display, use_container_width=True)
+            st.markdown("<div class='sci-image-label'>Input · 64×64 px (20m GSD, 2x NN grid)</div>", unsafe_allow_html=True)
+
+        with col2:
+            st.markdown("**2. Bicubic Baseline**")
+            st.caption("Standard 2x Interpolation (10m)")
+            st.image(bic_rgb, use_container_width=True)
+            bic_label = (
+                f"Bicubic · 128×128 px | PSNR: {bic_psnr:.2f} dB, SSIM: {bic_ssim:.4f}"
+                if has_reference and bic_psnr is not None
+                else "Bicubic baseline · 128×128 px (Standard 2x)"
+            )
+            st.markdown(f"<div class='sci-image-label'>{bic_label}</div>", unsafe_allow_html=True)
+
+        with col3:
+            st.markdown("**3. GeoFUSE SR (Ours)**")
+            st.caption("Residual Ensemble (10m)")
+            st.image(sr_rgb, use_container_width=True)
+            sr_label = (
+                f"GeoFUSE · 128×128 px | PSNR: {sr_psnr:.2f} dB, SSIM: {sr_ssim:.4f}"
+                if has_reference and sr_psnr is not None
+                else "GeoFUSE SR ensemble · 128×128 px (2x neural)"
+            )
+            st.markdown(f"<div class='sci-image-label'>{sr_label}</div>", unsafe_allow_html=True)
+
+        with col4:
+            st.markdown("**4. Clean Reference**")
+            st.caption("Target (10m GSD)")
+            if hr_rgb is not None:
+                st.image(hr_rgb, use_container_width=True)
+                st.markdown("<div class='sci-image-label'>Reference · 128×128 px (unseen ground truth)</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(
+                    """
+                    <div class="sci-unavailable-card">
+                        <div style="font-weight: 600; color: #f0f6fc; font-size: 0.85rem; margin-bottom: 4px;">Reference Unavailable</div>
+                        <div style="color: #8b949e; font-size: 0.75rem;">Reference: not available for uploaded imagery.</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown("<div class='sci-image-label'>Reference-free operational setting</div>", unsafe_allow_html=True)
+
+        with col5:
+            st.markdown("**5. Trust / Risk Map**")
+            st.caption("Heuristic Reliability Overlay")
+            st.image(trust_overlay, use_container_width=True)
+            st.markdown(f"<div class='sci-image-label'>Score: {score_pct:.2f} / 100 · RdYlGn heuristic overlay</div>", unsafe_allow_html=True)
+
+        # Single-Line Trust / Risk Map Legend (Requirement 6)
+        st.markdown(
+            """
+            <div class="sci-legend-box">
+                <div style="font-weight: 500; margin-bottom: 3px;">
+                    Lower estimated reconstruction risk &mdash; Moderate &mdash; Higher estimated reconstruction risk
+                </div>
+                <div>
+                    This map is a heuristic evidence indicator derived from ensemble disagreement, perturbation stability, and spectral/structural consistency signals &mdash; not a ground-truth error map.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Zoomed-In Inspection: Bicubic vs. GeoFUSE SR
+        st.markdown("---")
+        st.markdown("#### High-Frequency Detail: Bicubic vs. GeoFUSE SR")
+        st.caption(
+            "4x nearest-neighbor magnified crop comparing actual input pixels, bicubic interpolation blur, "
+            "GeoFUSE structural edge recovery, clean reference, and amplified high-frequency difference map."
         )
 
         z_ctrl1, z_ctrl2 = st.columns([1, 2])
@@ -988,36 +1202,36 @@ def main():
 
         z1, z2, z3, z4, z5 = st.columns(5)
         with z1:
-            st.markdown("**Zoomed Model Input**")
-            st.image(crop_lr, caption="20m Pixels (Coarse Grid)", use_container_width=True)
-            st.caption("What model received")
+            st.markdown("**Zoomed Input**")
+            st.image(crop_lr, use_container_width=True)
+            st.markdown("<div class='sci-image-label'>20m Pixels (Coarse Grid)</div>", unsafe_allow_html=True)
         with z2:
             st.markdown("**Zoomed Bicubic (2x)**")
-            st.image(crop_bic, caption="Bicubic Interpolation", use_container_width=True)
-            st.caption("Smooth, blurry edges")
+            st.image(crop_bic, use_container_width=True)
+            st.markdown("<div class='sci-image-label'>Smooth, blurry boundaries</div>", unsafe_allow_html=True)
         with z3:
             st.markdown("**Zoomed GeoFUSE (2x)**")
-            st.image(crop_sr, caption="GeoFUSE SR Ensemble", use_container_width=True)
-            st.caption("Sharper structural edges")
+            st.image(crop_sr, use_container_width=True)
+            st.markdown("<div class='sci-image-label'>Sharper structural edges</div>", unsafe_allow_html=True)
         with z4:
-            st.markdown("**Zoomed Clean Target**")
+            st.markdown("**Zoomed Target**")
             if crop_hr is not None:
-                st.image(crop_hr, caption="Clean 10m Reference", use_container_width=True)
-                st.caption("Unseen ground truth")
+                st.image(crop_hr, use_container_width=True)
+                st.markdown("<div class='sci-image-label'>Clean 10m ground truth</div>", unsafe_allow_html=True)
             else:
                 st.markdown(
                     """
-                    <div style="background-color: #1a1e24; border: 1px dashed #30363d; border-radius: 8px; padding: 24px 8px; text-align: center; margin-top: 8px;">
-                        <span style="color: #8b949e; font-size: 0.78rem;">Reference: not available for uploaded imagery</span>
+                    <div class="sci-unavailable-card" style="min-height: 120px; padding: 20px 8px;">
+                        <span style="color: #8b949e; font-size: 0.75rem;">Reference: not available</span>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-                st.caption("Reference unavailable")
+                st.markdown("<div class='sci-image-label'>Reference unavailable</div>", unsafe_allow_html=True)
         with z5:
-            st.markdown("**High-Freq Difference**")
-            st.image(diff_color, caption="|GeoFUSE - Bicubic| × 8", use_container_width=True)
-            st.caption("Reconstructed structures")
+            st.markdown("**High-Freq Diff**")
+            st.image(diff_color, use_container_width=True)
+            st.markdown("<div class='sci-image-label'>|GeoFUSE - Bicubic| × 8</div>", unsafe_allow_html=True)
 
         if has_reference and bic_psnr is not None:
             st.info(
@@ -1034,29 +1248,101 @@ def main():
                 f"**Quantitative Benchmark on Uploaded Patch #{selected_idx} (Zero Fabrication)**:  \n"
                 f"• **Super-Resolution Execution**: 2x ensemble reconstruction completed (64×64 → 128×128 px, 4 spectral bands).  \n"
                 f"• **Reference-Based Fidelity (PSNR/SSIM)**: **N/A** — Independent high-resolution ground truth is not available for real-world uploaded imagery.  \n"
-                f"• **Reference-Free Trust Score**: **{score_pct:.2f}%** ({'Approved' if is_trusted else 'Low-Trust Warning Flagged'})  \n"
+                f"• **Reference-Free Trust Score**: **{score_pct:.2f}%** ({'Operational baseline satisfied' if is_trusted else 'Advisory flagged'})  \n"
                 f"• **Multi-Criteria Evidence**: Disagreement σ = **{disag_mean:.5f}** | Spectral Δ-NDVI = **{delta_ndvi_mean:.4f}** | Edge Grad Corr r = **{grad_corr:.4f}**  \n\n"
                 "**Visual & Empirical Diagnosis**: The high-frequency difference map highlights sharp structural transitions, "
                 "linear boundaries, and contrast enhancement produced by the neural ensemble over standard bicubic interpolation. "
                 "In the absence of physical ground truth, verification is anchored on radiometric consensus with the observed input."
             )
 
-        # Visible Multi-Criteria Evidence Breakdown (Phase 5-7 Toggle)
-        if show_evidence and "normalized_signals" in fusion_result:
+    # -------------------------------------------------------------------------
+    # TAB 3: Evidence (Requirement 7: Real Horizontal Bars + Spatial Heatmaps)
+    # -------------------------------------------------------------------------
+    with tab_evidence:
+        st.markdown("#### Multi-Criteria Evidence Breakdown")
+        st.caption(
+            "Individual empirical reliability signals evaluated across epistemic model uncertainty, input perturbation sensitivity, "
+            "radiometric vegetation fidelity, and boundary edge alignment. Scaled to [0, 1] prior to fusion."
+        )
+
+        norm_sig = fusion_result.get("normalized_signals", {})
+        comp_stats = fusion_result.get("component_stats", {})
+        weights_used = fusion_result.get("weights_used", {})
+
+        # Component 1: Ensemble Agreement
+        if "disagreement" in norm_sig and "disagreement" in comp_stats:
+            disag_norm_mean = float(np.mean(norm_sig["disagreement"]))
+            agree_pct = max(0.0, min(100.0, (1.0 - disag_norm_mean) * 100.0))
+            disag_raw = comp_stats["disagreement"]["raw_mean"]
+            disag_bar = f"""
+            <div class="sci-bar-row">
+                <span class="sci-bar-label">1. Ensemble Agreement (Disagreement std σ: {disag_raw:.5f})</span>
+                <span class="sci-bar-val">{agree_pct:.1f}% &nbsp;[Weight: {weights_used.get('disagreement', 0.25):.2f}]</span>
+            </div>
+            <div class="sci-bar-container"><div class="sci-bar-fill" style="width: {agree_pct:.1f}%;"></div></div>
+            """
+        else:
+            disag_bar = "<div class='sci-bar-row'><span class='sci-bar-label'>1. Ensemble Agreement</span><span class='sci-bar-val'>Not available</span></div>"
+
+        # Component 2: Perturbation Stability
+        if "stability" in norm_sig and "stability" in comp_stats:
+            stab_norm_mean = float(np.mean(norm_sig["stability"]))
+            stab_pct = max(0.0, min(100.0, (1.0 - stab_norm_mean) * 100.0))
+            stab_raw = comp_stats["stability"]["raw_mean"]
+            stab_bar = f"""
+            <div class="sci-bar-row">
+                <span class="sci-bar-label">2. Perturbation Stability (Output variance: {stab_raw:.6f})</span>
+                <span class="sci-bar-val">{stab_pct:.1f}% &nbsp;[Weight: {weights_used.get('stability', 0.25):.2f}]</span>
+            </div>
+            <div class="sci-bar-container"><div class="sci-bar-fill" style="width: {stab_pct:.1f}%;"></div></div>
+            """
+        else:
+            stab_bar = "<div class='sci-bar-row'><span class='sci-bar-label'>2. Perturbation Stability</span><span class='sci-bar-val'>Not available</span></div>"
+
+        # Component 3: Spectral Consistency
+        spec_metrics = data.get("spectral_metrics", {})
+        if "spectral" in norm_sig and spec_metrics:
+            spec_norm_mean = float(np.mean(norm_sig["spectral"]))
+            spec_pct = max(0.0, min(100.0, (1.0 - spec_norm_mean) * 100.0))
+            spec_raw = spec_metrics.get("mean_delta_ndvi", 0.0)
+            spec_bar = f"""
+            <div class="sci-bar-row">
+                <span class="sci-bar-label">3. Spectral Consistency (Mean absolute Δ-NDVI: {spec_raw:.4f})</span>
+                <span class="sci-bar-val">{spec_pct:.1f}% &nbsp;[Weight: {weights_used.get('spectral', 0.25):.2f}]</span>
+            </div>
+            <div class="sci-bar-container"><div class="sci-bar-fill" style="width: {spec_pct:.1f}%;"></div></div>
+            """
+        else:
+            spec_bar = "<div class='sci-bar-row'><span class='sci-bar-label'>3. Spectral Consistency</span><span class='sci-bar-val'>Not available</span></div>"
+
+        # Component 4: Structural Edge Fidelity
+        edge_metrics = data.get("edge_metrics", {})
+        if "structural" in norm_sig and edge_metrics:
+            struct_norm_mean = float(np.mean(norm_sig["structural"]))
+            struct_pct = max(0.0, min(100.0, (1.0 - struct_norm_mean) * 100.0))
+            edge_r = edge_metrics.get("gradient_correlation", 0.0)
+            struct_bar = f"""
+            <div class="sci-bar-row">
+                <span class="sci-bar-label">4. Structural Consistency (Gradient Correlation r: {edge_r:.4f})</span>
+                <span class="sci-bar-val">{struct_pct:.1f}% &nbsp;[Weight: {weights_used.get('structural', 0.25):.2f}]</span>
+            </div>
+            <div class="sci-bar-container"><div class="sci-bar-fill" style="width: {struct_pct:.1f}%;"></div></div>
+            """
+        else:
+            struct_bar = "<div class='sci-bar-row'><span class='sci-bar-label'>4. Structural Consistency</span><span class='sci-bar-val'>Not available</span></div>"
+
+        st.markdown(disag_bar + stab_bar + spec_bar + struct_bar, unsafe_allow_html=True)
+
+        # Spatial Evidence Maps
+        if "normalized_signals" in fusion_result:
             try:
                 st.markdown("---")
-                st.markdown("### 🔬 Multi-Source Evidence Signal Breakdown (Phases 5 – 7)")
-                st.caption(
-                    "Each independent reliability signal is min-max normalized to [0, 1] prior to weighted heuristic fusion. "
-                    "This scale normalization prevents high-magnitude structural gradients from overpowering subtle uncertainty variance."
-                )
-
-                norm_sig = fusion_result["normalized_signals"]
+                st.markdown("#### Spatial Evidence Heatmaps")
                 e_col1, e_col2, e_col3, e_col4 = st.columns(4)
 
                 with e_col1:
-                    st.markdown("**1. Ensemble Disagreement (Phase 5)**")
-                    st.caption("Epistemic uncertainty: per-pixel std across 3 random seeds.")
+                    st.markdown("**1. Model Disagreement**")
+                    st.caption("Epistemic uncertainty (std across ensemble)")
                     fig1, ax1 = plt.subplots(figsize=(4, 3.2), dpi=100)
                     im1 = ax1.imshow(norm_sig["disagreement"], cmap="magma", vmin=0, vmax=1)
                     ax1.axis("off")
@@ -1065,8 +1351,8 @@ def main():
                     plt.close(fig1)
 
                 with e_col2:
-                    st.markdown("**2. Perturbation Stability (Phase 6)**")
-                    st.caption("Input sensitivity: output variance under noise & jitter.")
+                    st.markdown("**2. Perturbation Stability**")
+                    st.caption("Output variance under sensor noise/jitter")
                     fig2, ax2 = plt.subplots(figsize=(4, 3.2), dpi=100)
                     im2 = ax2.imshow(norm_sig["stability"], cmap="inferno", vmin=0, vmax=1)
                     ax2.axis("off")
@@ -1075,8 +1361,8 @@ def main():
                     plt.close(fig2)
 
                 with e_col3:
-                    st.markdown("**3. Spectral Consistency (Phase 7)**")
-                    st.caption("Radiometric fidelity: absolute ΔNDVI vs. reference bands.")
+                    st.markdown("**3. Spectral Consistency**")
+                    st.caption("Absolute Δ-NDVI deviation vs baseline")
                     fig3, ax3 = plt.subplots(figsize=(4, 3.2), dpi=100)
                     im3 = ax3.imshow(norm_sig["spectral"], cmap="cividis", vmin=0, vmax=1)
                     ax3.axis("off")
@@ -1085,8 +1371,8 @@ def main():
                     plt.close(fig3)
 
                 with e_col4:
-                    st.markdown("**4. Structural Consistency (Phase 7)**")
-                    st.caption("Edge alignment: Sobel boundary gradient deviation.")
+                    st.markdown("**4. Structural Consistency**")
+                    st.caption("Sobel gradient boundary error")
                     fig4, ax4 = plt.subplots(figsize=(4, 3.2), dpi=100)
                     im4 = ax4.imshow(norm_sig["structural"], cmap="plasma", vmin=0, vmax=1)
                     ax4.axis("off")
@@ -1094,21 +1380,23 @@ def main():
                     st.pyplot(fig4, use_container_width=True)
                     plt.close(fig4)
             except Exception as e:
-                st.warning(f"Could not render evidence signal breakdown: {e}")
+                st.warning(f"Could not render spatial evidence heatmaps: {e}")
 
-        # Downstream Building Footprint Analysis (Phase 9 Toggle)
-        if show_downstream and "downstream_comp" in data:
+    # -------------------------------------------------------------------------
+    # TAB 4: Downstream Impact
+    # -------------------------------------------------------------------------
+    with tab_downstream:
+        st.markdown("#### Downstream Task Evaluation: Building Footprint Extraction")
+        st.caption(
+            "Extracts rooftop components using identical morphological top-hat filtering and NDVI vegetation rejection. "
+            "Evaluates consistency between Bicubic baseline and GeoFUSE SR reconstructions across High-Trust vs. Low-Trust geographic zones."
+        )
+
+        if "downstream_comp" in data:
             try:
-                st.markdown("---")
-                st.markdown("### 🏢 Downstream Task Evaluation: Building Footprint Extraction (Phase 9)")
-                st.caption(
-                    "Extracts rooftop components using identical morphological top-hat filtering and NDVI vegetation rejection. "
-                    "Evaluates consistency between Bicubic and SR reconstructions across High-Trust vs. Low-Trust geographic zones."
-                )
-
                 if not has_reference:
                     st.info(
-                        "ℹ️ **Reference Mask Unavailable for Uploaded Imagery**: "
+                        "**Reference Mask Unavailable for Uploaded Imagery**: "
                         "Because arbitrary user-uploaded imagery lacks independent high-resolution ground truth masks, "
                         "this downstream evaluation measures empirical consensus and morphological boundary discrepancy "
                         "directly between the standard Bicubic baseline and the GeoFUSE SR ensemble, partitioned across High-Trust vs. Low-Trust zones."
@@ -1135,15 +1423,18 @@ def main():
                 d_col1, d_col2, d_col3 = st.columns(3)
                 with d_col1:
                     st.markdown(f"**Bicubic Footprints** ({foot_bic['footprint_pixels']} px)")
-                    st.image(bic_cnt, caption="Cyan Contours: Bicubic Detections", use_container_width=True)
+                    st.image(bic_cnt, use_container_width=True)
+                    st.markdown("<div class='sci-image-label'>Cyan contours: Bicubic detections</div>", unsafe_allow_html=True)
 
                 with d_col2:
                     st.markdown(f"**GeoFUSE SR Footprints** ({foot_sr['footprint_pixels']} px)")
-                    st.image(sr_cnt, caption="Cyan Contours: SR Detections", use_container_width=True)
+                    st.image(sr_cnt, use_container_width=True)
+                    st.markdown("<div class='sci-image-label'>Cyan contours: SR detections</div>", unsafe_allow_html=True)
 
                 with d_col3:
                     st.markdown("**Footprint Agreement Map**")
-                    st.image(agree_rgb, caption="Cyan: Consensus | Orange: Boundary Discrepancy", use_container_width=True)
+                    st.image(agree_rgb, use_container_width=True)
+                    st.markdown("<div class='sci-image-label'>Cyan: Consensus | Orange: Discrepancy</div>", unsafe_allow_html=True)
 
                 st.markdown("#### Quantitative Footprint Agreement Breakdown")
                 stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
@@ -1157,29 +1448,16 @@ def main():
                     stat_col4.metric("Relative Ref HR IoU", "Not available (No GT)")
             except Exception as e:
                 st.warning(f"Could not render downstream task evaluation: {e}")
-
-        # Scientific Honesty & Limitations Note
-        st.markdown("---")
-        st.markdown(
-            """
-            <div style="background-color: #1a1e24; border: 1px solid #30363d; border-radius: 8px; padding: 14px 18px; margin-top: 10px; margin-bottom: 20px;">
-                <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 6px;">⚠️ Scientific Honesty & Limitations Note</div>
-                <ul style="margin: 0; padding-left: 20px; color: #8b949e; font-size: 0.88rem; line-height: 1.55;">
-                    <li><b>Nominally Finer-Resolution Reconstruction</b>: The super-resolved imagery represents an algorithmic reconstruction evaluated within a synthetic degrade-and-recover setting (2x downsampling, PSF blur, sensor noise). It demonstrates empirical fidelity against bicubic interpolation, but does <b>not</b> constitute mathematical proof of true high-resolution physical signal recovery in unconstrained real-world deployments.</li>
-                    <li><b>Heuristic Evidence Indicator</b>: The composite Trust Score is an <b>empirical heuristic combination</b> of normalized proxies (uncertainty, stability, spectral, and structural checks). It is an operational decision-support tool, <b>not</b> a calibrated Bayesian posterior probability or certainty certificate.</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        else:
+            st.info("Downstream task evaluation data is not available for this tile.")
 
     # -------------------------------------------------------------------------
-    # TAB 2: Auditable Trust Receipt Viewer Tab (Phase 11)
+    # TAB 5: Trust Receipt
     # -------------------------------------------------------------------------
-    with tab2:
-        st.markdown("### 📜 Auditable Trust Receipt")
+    with tab_receipt:
+        st.markdown("#### Auditable Trust Receipt")
         st.caption(
-            "Cryptographically auditable evidence record compiling model provenance, GeoTIFF acquisition metadata, "
+            "Cryptographically verifiable evidence record compiling model provenance, GeoTIFF acquisition metadata, "
             "empirical multi-criteria verification metrics, and automated plain-language advisories."
         )
 
@@ -1189,7 +1467,7 @@ def main():
             st.markdown(receipt_html, unsafe_allow_html=True)
 
             # JSON & HTML Download and Explorer
-            st.markdown("#### 💾 Export Auditable Trust Receipt Record")
+            st.markdown("#### Export Auditable Trust Receipt Record")
             receipt_json_str = json.dumps(receipt, indent=2, ensure_ascii=False)
 
             col_dl1, col_dl2 = st.columns(2)
@@ -1221,7 +1499,7 @@ def main():
                     use_container_width=True,
                 )
 
-            with st.expander("🔍 Inspect Full Machine-Readable JSON Schema & Record", expanded=False):
+            with st.expander("Inspect Full Machine-Readable JSON Schema & Record", expanded=False):
                 st.json(receipt, expanded=False)
         except Exception as e:
             st.warning(f"Could not render trust receipt: {e}")
