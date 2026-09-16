@@ -294,13 +294,12 @@ def run_cached_pipeline(tile_idx: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-@st.cache_data(show_spinner="Running live ensemble inference & multi-evidence verification...")
 def run_live_pipeline_for_patch(
     lr_tile: np.ndarray,
     patch_idx: int,
     _meta_dict: Optional[Dict[str, Any]] = None,
     meta_dict: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Execute complete live ensemble inference and multi-criteria trust verification on an uploaded patch.
 
     Reuses the verified pipeline components from Phase A:
@@ -316,8 +315,10 @@ def run_live_pipeline_for_patch(
     effective_meta = _meta_dict if _meta_dict is not None else (meta_dict or {})
     models, config, device = load_cached_models()
     if models is None:
-        print("[GeoFUSE Error] Models could not be loaded in run_live_pipeline_for_patch.")
-        return None
+        raise RuntimeError(
+            "Ensemble model checkpoints could not be loaded from outputs/checkpoints/. "
+            "Please ensure ensemble_member_0.pth, ensemble_member_1.pth, and ensemble_member_2.pth exist."
+        )
 
     try:
         # 1. Baseline & Ensemble SR Reconstruction
@@ -439,7 +440,7 @@ def run_live_pipeline_for_patch(
         import traceback
         traceback.print_exc()
         print(f"[GeoFUSE Error] Live pipeline failed for patch {patch_idx}: {e}")
-        return None
+        raise RuntimeError(f"Error during patch #{patch_idx} inference: {str(e)}") from e
 
 
 def get_display_stretch_bounds(tile: Optional[np.ndarray], false_color: bool = False) -> Tuple[float, float]:
@@ -969,10 +970,13 @@ def main():
                 use_container_width=True,
                 help="Run 3-member PyTorch neural ensemble, perturbation stability testing, spectral/structural consistency checks, and compute the Trust Score for the selected patch.",
             )
+        cache_key = f"live_data_{meta.get('primary_filename', 'scene')}_{selected_idx}"
         with exec_col2:
             if st.session_state.get(exec_key, False):
                 if st.button("↺ Reset Analysis", use_container_width=True):
                     st.session_state[exec_key] = False
+                    if cache_key in st.session_state:
+                        del st.session_state[cache_key]
                     st.rerun()
 
         if btn_execute:
@@ -988,14 +992,24 @@ def main():
             )
             st.stop()
 
-        # Execute live pipeline for selected patch
-        with st.spinner("Executing live ensemble super-resolution & evidence evaluation..."):
-            data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, _meta_dict=meta)
+        # Execute live pipeline for selected patch with session_state caching
+        if btn_execute or (cache_key not in st.session_state):
+            with st.spinner("Executing live ensemble super-resolution & evidence evaluation..."):
+                try:
+                    data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, _meta_dict=meta)
+                    st.session_state[cache_key] = data
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    st.error(f"**Inference Execution Failed**: {str(e)}")
+                    st.stop()
+        else:
+            data = st.session_state.get(cache_key)
 
         if data is None:
             st.error(
                 f"**Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.  \n"
-                "Please verify that model checkpoints exist in `outputs/checkpoints/` and that the raster patch contains valid numerical values."
+                "Please click '🚀 Execute Super-Resolution & Trust Verification' again or verify model checkpoints exist in `outputs/checkpoints/`."
             )
             st.stop()
 
