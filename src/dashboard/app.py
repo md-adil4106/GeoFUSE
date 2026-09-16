@@ -27,6 +27,7 @@ import torch
 
 from src.data.degrade import bicubic_upsample, synthesize_pseudo_lr
 from src.data.tiling import extract_tiles, load_sentinel2_stack
+from src.data.upload import load_uploaded_stack, validate_uploaded_raster
 from src.evaluation.downstream_eval import (
     compare_downstream_footprints,
     extract_building_footprints,
@@ -385,12 +386,39 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    # Header & Banner
-    st.title("🛰️ GeoFUSE SentinelGuard")
-    st.markdown(
-        "**Trust-Aware Super-Resolution Mapping from Medium-Resolution Sentinel-2 Imagery**  \n"
-        "*" "Sharper imagery, with evidence attached." "*"
-    )
+    # Mode resolution & session-state flag
+    if "app_mode" not in st.session_state:
+        st.session_state["app_mode"] = "Demo Mode"
+
+    # Header & Banner with persistent mode indicator
+    header_col1, header_col2 = st.columns([3, 1])
+    with header_col1:
+        st.title("🛰️ GeoFUSE SentinelGuard")
+        st.markdown(
+            "**Trust-Aware Super-Resolution Mapping from Medium-Resolution Sentinel-2 Imagery**  \n"
+            "*" "Sharper imagery, with evidence attached." "*"
+        )
+    with header_col2:
+        if st.session_state.get("app_mode") == "Live Analysis":
+            st.markdown(
+                """
+                <div style="background-color: #211c15; border: 1px solid #d29922; border-radius: 20px; padding: 6px 14px; text-align: center; margin-top: 15px;">
+                    <span style="color: #f0883e; font-weight: 700; font-size: 0.95rem;">⚡ ● Live Analysis</span><br/>
+                    <span style="color: #8b949e; font-size: 0.78rem;">User Uploaded Imagery</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div style="background-color: #16241a; border: 1px solid #238636; border-radius: 20px; padding: 6px 14px; text-align: center; margin-top: 15px;">
+                    <span style="color: #3fb950; font-weight: 700; font-size: 0.95rem;">🟢 ● Demo Mode</span><br/>
+                    <span style="color: #8b949e; font-size: 0.78rem;">Precomputed Offline Cache</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     st.info(
         "**Scientific Transparency Mandate**: Reconstructions are accompanied by multi-criteria empirical evidence "
@@ -399,9 +427,123 @@ def main():
         "Downstream metrics report **Bicubic-vs-SR Agreement** in the absence of independent vector ground truth."
     )
 
-    # 1. Sidebar Controls & Tile Selection
+    # 1. Sidebar Controls & Entry Points
     st.sidebar.header("🕹️ Controls & Settings")
+    st.sidebar.markdown("### 🛰️ Analyze Satellite Imagery")
+    imagery_source = st.sidebar.radio(
+        "Select Workflow Mode:",
+        options=["Use Demo Scene", "Upload GeoTIFF"],
+        index=0,
+        help="Choose 'Use Demo Scene' for instant precomputed offline evaluation or 'Upload GeoTIFF' for user-provided imagery."
+    )
 
+    if imagery_source == "Use Demo Scene":
+        st.session_state["app_mode"] = "Demo Mode"
+    else:
+        st.session_state["app_mode"] = "Live Analysis"
+
+    color_mode = st.sidebar.radio(
+        "Band Visualization Mode:",
+        options=["Natural RGB (B04-B03-B02)", "False-Color Infrared (B08-B04-B03)"],
+    )
+    is_false_color = "False-Color" in color_mode
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔬 Evidence Inspection Toggles")
+    show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=False)
+    show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
+
+    # -------------------------------------------------------------------------
+    # Branch A: Upload GeoTIFF Workflow
+    # -------------------------------------------------------------------------
+    if imagery_source == "Upload GeoTIFF":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("📤 Upload Raster")
+        uploaded_files = st.sidebar.file_uploader(
+            "Upload Sentinel-2 GeoTIFF(s):",
+            type=["tif", "tiff", "jp2"],
+            accept_multiple_files=True,
+            help="Upload either a single 4-band GeoTIFF (B02, B03, B04, B08) or 4 individual band files.",
+        )
+
+        st.markdown("### 📤 Upload Sentinel-2 GeoTIFF for Live Analysis")
+
+        if not uploaded_files:
+            st.info(
+                "**Ready for Upload**: Please upload a Sentinel-2 GeoTIFF file in the sidebar to begin analysis.  \n\n"
+                "• **Option 1 (Single File)**: A single multi-band GeoTIFF containing at least 4 bands (ordered as B02 Blue, B03 Green, B04 Red, B08 NIR).  \n"
+                "• **Option 2 (Multiple Files)**: Four individual Sentinel-2 band files (`*B02*.tif`, `*B03*.tif`, `*B04*.tif`, `*B08*.tif`).  \n"
+                "• **Validation Requirements**: Minimum dimension 64 × 64 pixels, valid projected/geographic CRS, ~10m GSD."
+            )
+            st.stop()
+
+        # Run pre-flight validation
+        try:
+            val_result = validate_uploaded_raster(uploaded_files)
+        except Exception as e:
+            st.error(f"🚨 **Raster Validation Error**: Failed to process uploaded file: {str(e)}")
+            st.stop()
+
+        # Render validation checklist
+        st.markdown("#### 📋 Pre-Flight Integrity Checklist")
+        val_col1, val_col2 = st.columns(2)
+        for i, chk in enumerate(val_result["checks"]):
+            target_col = val_col1 if i % 2 == 0 else val_col2
+            with target_col:
+                if chk["passed"]:
+                    st.markdown(f"✅ **{chk['name']}**  \n*{chk['message']}*")
+                else:
+                    st.markdown(f"❌ **{chk['name']}**  \n:red[*{chk['message']}*]")
+
+        # Block progression if validation fails
+        if not val_result["is_valid"]:
+            st.error(
+                f"🚨 **Upload Validation Failed**: {val_result.get('error_message')}  \n\n"
+                "Progression to super-resolution inference is blocked until a valid Sentinel-2 raster is provided. "
+                "Please review the failed check above and re-upload compatible GeoTIFF files."
+            )
+            st.stop()
+
+        # Render Compact Metadata Panel upon successful validation
+        meta = val_result["metadata"]
+        st.success("✅ **Upload Validation Successful**: All 6 pre-flight integrity checks passed!")
+        st.markdown("#### 🛰️ Verified Imagery Metadata")
+        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+        m_col1.metric("Dimensions", f"{meta['height']} × {meta['width']} px")
+        m_col2.metric("Resolution (GSD)", f"{meta['resolution'][0]:.1f}m × {meta['resolution'][1]:.1f}m")
+        m_col3.metric("CRS", meta["crs"])
+        m_col4.metric("Band Count", f"{meta['band_count']} Bands")
+        m_col5.metric("Acquisition Date", meta["acquisition_date"])
+
+        # Load raster stack safely and render preview
+        try:
+            uploaded_stack, stack_meta = load_uploaded_stack(uploaded_files, val_result)
+        except Exception as e:
+            st.error(f"🚨 **Raster Ingestion Error**: Failed to load validated raster into memory: {str(e)}")
+            st.stop()
+
+        preview_rgb = to_display_rgb(uploaded_stack, false_color=is_false_color)
+        p_col1, p_col2 = st.columns([2, 1])
+        with p_col1:
+            st.image(
+                preview_rgb,
+                caption=f"Uploaded Scene: {meta['primary_filename']} ({'False-Color CIR' if is_false_color else 'Natural RGB'})",
+                use_container_width=True,
+            )
+        with p_col2:
+            st.markdown("**Scene Summary**")
+            st.markdown(f"• **Ingestion Mode**: `{val_result['mode'].replace('_', ' ').title()}`")
+            st.markdown(f"• **Radiometric Dtype**: `{meta['dtype']}`")
+            st.markdown(f"• **Reflectance Normalized**: `{meta['needs_reflectance_scaling']}`")
+            if meta.get("bounds"):
+                b = meta["bounds"]
+                st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
+            st.info("Uploaded imagery is verified and ready for live super-resolution analysis.")
+        st.stop()
+
+    # -------------------------------------------------------------------------
+    # Branch B: Demo Scene Workflow (Default)
+    # -------------------------------------------------------------------------
     manifest = load_demo_manifest()
     is_offline_cache = False
 
@@ -442,17 +584,6 @@ def main():
         options=list(tile_options.keys()),
         format_func=lambda x: tile_options.get(x, f"Tile #{x}"),
     )
-
-    color_mode = st.sidebar.radio(
-        "Band Visualization Mode:",
-        options=["Natural RGB (B04-B03-B02)", "False-Color Infrared (B08-B04-B03)"],
-    )
-    is_false_color = "False-Color" in color_mode
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔬 Evidence Inspection Toggles")
-    show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=False)
-    show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
 
     # 2. Retrieve Pipeline Data (Cached / Precomputed)
     data = run_cached_pipeline(selected_idx)
