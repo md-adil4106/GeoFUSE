@@ -1,0 +1,36 @@
+experiment:
+  exp_id: baseline_exp001
+  description: Reproducible GPU-verified baseline training run on NVIDIA RTX 4060
+  device: cuda:0
+  gpu_name: NVIDIA GeForce RTX 4060 Laptop GPU
+  cuda_version: '12.4'
+  torch_version: 2.6.0+cu124
+  seed: 42
+  total_duration_s: 6.4
+  peak_vram_mib: 158.18
+  best_epoch: 15
+  best_val_loss: 0.017278999090194702
+  best_val_psnr: 38.66755102040816
+  best_val_ssim: 0.9271755102040815
+model:
+  architecture: ResidualSRNet
+  scale_factor: 2
+  num_channels: 4
+  num_features: 48
+  num_residual_blocks: 4
+  parameter_count: 273700
+training:
+  batch_size: 16
+  epochs: 15
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  loss: CompoundSRLoss (L1 + 0.1 * SobelGradient)
+  scheduler: CosineAnnealingLR (T_max=15, eta_min=1e-6)
+  mixed_precision: true
+  patch_size_hr: 128
+  stride: 32
+  val_quadrant:
+  - 256
+  - 512
+  - 256
+  - 512
