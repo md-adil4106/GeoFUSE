@@ -846,6 +846,26 @@ def main():
             border-radius: 2px;
         }
 
+        /* Keyframe Animations: Pulse, Fade-in, and Slide-in */
+        @keyframes telemetry-pulse-cyan {
+            0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.7); }
+            70% { box-shadow: 0 0 0 5px rgba(0, 229, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+        }
+        @keyframes telemetry-pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes telemetry-fade-in {
+            from { opacity: 0; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes telemetry-slide-in {
+            from { opacity: 0; transform: translateX(-4px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
         /* System Telemetry Status Indicator */
         .sci-status-indicator {
             display: inline-flex;
@@ -860,6 +880,11 @@ def main():
             background-color: var(--bg-surface);
             border: 1px solid var(--border-subtle);
             color: var(--text-secondary);
+            transition: all 0.18s ease-in-out;
+        }
+        .sci-status-indicator:hover {
+            border-color: var(--telemetry-accent);
+            box-shadow: 0 0 10px var(--telemetry-accent-muted);
         }
         .sci-status-indicator .status-dot {
             width: 6px;
@@ -868,12 +893,12 @@ def main():
             display: inline-block;
         }
         .sci-status-indicator.demo .status-dot {
-            background-color: var(--telemetry-accent);
-            box-shadow: 0 0 6px var(--telemetry-accent);
+            background-color: var(--telemetry-accent) !important;
+            animation: telemetry-pulse-cyan 2.2s infinite ease-in-out !important;
         }
         .sci-status-indicator.live .status-dot {
-            background-color: #10b981;
-            box-shadow: 0 0 6px #10b981;
+            background-color: #10b981 !important;
+            animation: telemetry-pulse-green 2.2s infinite ease-in-out !important;
         }
 
         /* Sidebar Status Readout */
@@ -908,10 +933,266 @@ def main():
             box-shadow: 0 0 6px #10b981;
         }
 
+        /* Sidebar Module Headers */
+        .sidebar-module-header {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.10em;
+            color: var(--telemetry-accent-blue);
+            margin-top: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-module-header::before {
+            content: "■";
+            font-size: 0.48rem;
+            color: var(--telemetry-accent);
+        }
+
+        /* Telemetry Segmented Control for Radio Buttons (Horizontal) */
+        div[data-testid="stRadio"] > label {
+            font-family: var(--font-mono) !important;
+            font-size: 0.68rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: var(--text-muted) !important;
+            font-weight: 600 !important;
+            margin-bottom: 6px !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] {
+            display: flex !important;
+            flex-direction: row !important;
+            background-color: #0b0f17 !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 2px !important;
+            gap: 2px !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label {
+            flex: 1 1 0% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            background-color: transparent !important;
+            border: 1px solid transparent !important;
+            border-radius: 2px !important;
+            padding: 7px 8px !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
+            background-color: rgba(0, 229, 255, 0.06) !important;
+            border-color: rgba(0, 229, 255, 0.20) !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+            background-color: #0284c7 !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.25) !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stMarkdownContainer"] p {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioButtonIcon"] {
+            display: none !important;
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p {
+            font-family: var(--font-mono) !important;
+            font-size: 0.69rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-secondary) !important;
+            margin: 0 !important;
+        }
+
+        /* Telemetry Pill-Shaped Toggle Switches for Checkboxes */
+        div[data-testid="stCheckbox"] {
+            padding: 3px 0 !important;
+        }
+        div[data-testid="stCheckbox"] label {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            flex-direction: row-reverse !important;
+            cursor: pointer !important;
+            padding: 6px 8px !important;
+            border-radius: 2px !important;
+            border: 1px solid transparent !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        div[data-testid="stCheckbox"] label:hover {
+            background-color: rgba(0, 229, 255, 0.03) !important;
+            border-color: rgba(26, 35, 50, 0.6) !important;
+        }
+        div[data-testid="stCheckbox"] label [data-testid="stMarkdownContainer"] p {
+            font-family: var(--font-sans) !important;
+            font-size: 0.78rem !important;
+            color: var(--text-secondary) !important;
+            margin: 0 !important;
+            transition: color 0.15s ease !important;
+        }
+        div[data-testid="stCheckbox"] label:hover [data-testid="stMarkdownContainer"] p {
+            color: var(--text-primary) !important;
+        }
+        div[data-testid="stCheckbox"] label > div:first-child {
+            position: relative !important;
+            width: 32px !important;
+            height: 16px !important;
+            min-width: 32px !important;
+            background: #141b27 !important;
+            border: 1px solid #233044 !important;
+            border-radius: 10px !important;
+            transition: all 0.20s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        div[data-testid="stCheckbox"] label > div:first-child::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 2px !important;
+            left: 2px !important;
+            width: 10px !important;
+            height: 10px !important;
+            background: #64748b !important;
+            border-radius: 50% !important;
+            transition: all 0.20s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        div[data-testid="stCheckbox"] label:has(input:checked) > div:first-child {
+            background: #0284c7 !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 8px rgba(0, 229, 255, 0.35) !important;
+        }
+        div[data-testid="stCheckbox"] label:has(input:checked) > div:first-child::after {
+            left: 18px !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 4px rgba(0, 229, 255, 0.7) !important;
+        }
+        div[data-testid="stCheckbox"] label svg {
+            display: none !important;
+        }
+
+        /* Telemetry Compact File Rows */
+        div[data-testid="stFileUploader"] {
+            background: transparent !important;
+        }
+        div[data-testid="stFileUploader"] section {
+            background-color: #0b0f17 !important;
+            border: 1px dashed var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 14px !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        div[data-testid="stFileUploader"] section:hover {
+            border-color: var(--telemetry-accent) !important;
+            background-color: #0d131f !important;
+            box-shadow: 0 0 10px var(--telemetry-accent-muted) !important;
+        }
+        div[data-testid="stFileUploaderFile"] {
+            background-color: #0e131d !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 8px 10px !important;
+            margin-top: 6px !important;
+            transition: all 0.18s ease-in-out !important;
+            animation: telemetry-slide-in 0.20s ease-out !important;
+        }
+        div[data-testid="stFileUploaderFile"]:hover {
+            border-color: var(--telemetry-accent-blue) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+        }
+        div[data-testid="stFileUploaderFileName"] {
+            font-family: var(--font-mono) !important;
+            font-size: 0.72rem !important;
+            color: #cbd5e1 !important;
+        }
+
+        /* Pre-Flight Checklist Status-Chips */
+        .telemetry-chip-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 2px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            transition: all 0.18s ease-in-out;
+        }
+        .telemetry-chip-card:hover {
+            border-color: var(--telemetry-accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .telemetry-chip-card.pass {
+            border-left: 3px solid #10b981;
+        }
+        .telemetry-chip-card.fail {
+            border-left: 3px solid #ef4444;
+        }
+        .telemetry-chip-card .chip-badge {
+            font-family: var(--font-mono);
+            font-size: 0.70rem;
+            font-weight: 700;
+        }
+        .telemetry-chip-card.pass .chip-badge {
+            color: #10b981;
+        }
+        .telemetry-chip-card.fail .chip-badge {
+            color: #ef4444;
+        }
+        .telemetry-chip-card .chip-title {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        .telemetry-chip-card .chip-message {
+            font-family: var(--font-sans);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.35;
+        }
+
+        /* Hover Elevation on Cards & Metric Tiles */
+        [data-testid="stMetric"],
+        .sci-legend-box,
+        .sci-evidence-banner,
+        .telemetry-score-card {
+            transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease !important;
+        }
+        [data-testid="stMetric"]:hover {
+            border-color: rgba(0, 229, 255, 0.40) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45) !important;
+        }
+        .sci-evidence-banner:hover,
+        .telemetry-score-card:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.50) !important;
+        }
+
+        /* Content Fade-in on Tab Switching */
+        div[data-baseweb="tab-panel"] {
+            animation: telemetry-fade-in 0.18s ease-out !important;
+        }
+        div[data-testid="stMetricValue"] {
+            animation: telemetry-fade-in 0.22s ease-out !important;
+        }
+
         /* Image Display & Muted Monospace Labels */
         div[data-testid="stImage"] img {
             border: 1px solid var(--border-subtle) !important;
             border-radius: 2px !important;
+            transition: border-color 0.18s ease !important;
+        }
+        div[data-testid="stImage"] img:hover {
+            border-color: var(--telemetry-accent-blue) !important;
         }
         .sci-image-label {
             font-size: 0.70rem;
@@ -1007,11 +1288,6 @@ def main():
             font-family: var(--font-mono) !important;
             font-size: 0.78rem !important;
         }
-        div[data-testid="stFileUploader"] section {
-            background-color: var(--bg-surface) !important;
-            border: 1px dashed var(--border-subtle) !important;
-            border-radius: 2px !important;
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -1047,12 +1323,17 @@ def main():
             )
 
     # 1. Sidebar Controls & Entry Points
-    st.sidebar.header("Controls & Settings")
-    st.sidebar.markdown("### Imagery Source")
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-module-header">IMAGERY SOURCE</div>
+        """,
+        unsafe_allow_html=True,
+    )
     imagery_source = st.sidebar.radio(
         "Select Workflow Mode:",
         options=["Use Demo Scene", "Upload GeoTIFF"],
         index=0,
+        horizontal=True,
         help="Choose 'Use Demo Scene' for instant precomputed offline evaluation or 'Upload GeoTIFF' for user-provided imagery."
     )
 
@@ -1064,20 +1345,18 @@ def main():
     color_mode = st.sidebar.radio(
         "Band Visualization Mode:",
         options=["Natural RGB (B04-B03-B02)", "False-Color Infrared (B08-B04-B03)"],
+        horizontal=True,
     )
     is_false_color = "False-Color" in color_mode
 
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Evidence Inspection Toggles")
-    show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=True)
-    show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
-
-    # -------------------------------------------------------------------------
-    # Branch A: Upload GeoTIFF Workflow
-    # -------------------------------------------------------------------------
+    # In Upload mode, render Upload Queue first, then Evidence Toggles
     if imagery_source == "Upload GeoTIFF":
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Upload Raster")
+        st.sidebar.markdown(
+            """
+            <div class="sidebar-module-header">UPLOAD QUEUE</div>
+            """,
+            unsafe_allow_html=True,
+        )
         uploaded_files = st.sidebar.file_uploader(
             "Upload Sentinel-2 GeoTIFF(s):",
             type=["tif", "tiff", "jp2"],
@@ -1090,6 +1369,31 @@ def main():
             value=False,
             help="Loads bundled 128×128 Sentinel-2 GeoTIFF (examples/sample_upload/sample_s2_4band_128px.tif) to demonstrate live validation, patch tiling, and real live ensemble inference without manual file selection.",
         )
+
+        st.sidebar.markdown(
+            """
+            <div class="sidebar-module-header">EVIDENCE TOGGLES</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=True)
+        show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
+    else:
+        st.sidebar.markdown(
+            """
+            <div class="sidebar-module-header">EVIDENCE TOGGLES</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        show_evidence = st.sidebar.checkbox("Show Detailed Evidence Breakdown (Phase 5-7)", value=True)
+        show_downstream = st.sidebar.checkbox("Show Downstream Building Footprint Analysis (Phase 9)", value=True)
+        uploaded_files = None
+        use_bundled_sample = False
+
+    # -------------------------------------------------------------------------
+    # Branch A: Upload GeoTIFF Workflow
+    # -------------------------------------------------------------------------
+    if imagery_source == "Upload GeoTIFF":
 
         if not uploaded_files and use_bundled_sample:
             sample_path = ensure_sample_geotiff()
@@ -1129,10 +1433,18 @@ def main():
         chk_cols = st.columns(3)
         for i, chk in enumerate(val_result.get("checks", [])):
             with chk_cols[i % 3]:
-                if chk["passed"]:
-                    st.markdown(f"**[PASS] {chk['name']}**  \n*{chk['message']}*")
-                else:
-                    st.markdown(f"**[FAIL] {chk['name']}**  \n:red[*{chk['message']}*]")
+                status_class = "pass" if chk["passed"] else "fail"
+                status_icon = "✓ [PASS]" if chk["passed"] else "✗ [FAIL]"
+                chk_html = f"""
+                <div class="telemetry-chip-card {status_class}">
+                    <div>
+                        <span class="chip-badge">{status_icon}</span>
+                        <span class="chip-title">{chk['name']}</span>
+                    </div>
+                    <div class="chip-message">{chk['message']}</div>
+                </div>
+                """
+                st.markdown(chk_html, unsafe_allow_html=True)
 
         if not val_result["is_valid"]:
             st.error(
@@ -1192,8 +1504,12 @@ def main():
             for t in tiles
         }
 
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Patch Selection")
+        st.sidebar.markdown(
+            """
+            <div class="sidebar-module-header">PATCH SELECTION</div>
+            """,
+            unsafe_allow_html=True,
+        )
         selected_idx = st.sidebar.selectbox(
             "Select 64×64 Patch to Analyze:",
             options=list(tile_options.keys()),
@@ -1322,6 +1638,12 @@ def main():
             }
 
         # Demo mode status indicator
+        st.sidebar.markdown(
+            """
+            <div class="sidebar-module-header">SCENE SELECTION</div>
+            """,
+            unsafe_allow_html=True,
+        )
         if is_offline_cache:
             st.sidebar.success("**Demo Mode: Offline Cache Active**")
             st.sidebar.caption("Precomputed offline assets loaded — sub-10ms response, zero live inference.")
