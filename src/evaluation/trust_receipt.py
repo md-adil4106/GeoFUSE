@@ -113,6 +113,7 @@ def generate_trust_receipt(
     pipeline_data: Optional[Dict[str, Any]] = None,
     min_trust_threshold: Optional[float] = None,
     geo_meta: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """Generate an auditable, verifiable Trust Receipt dictionary for a tile.
 

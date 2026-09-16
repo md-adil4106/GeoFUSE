@@ -409,14 +409,30 @@ def run_live_pipeline_for_patch(
             "edge_metrics": edge_metrics,
             "downstream_comp": downstream_comp,
         }
-        receipt = generate_trust_receipt(
-            tile_idx=patch_idx,
-            raw_dir=None,
-            config=config,
-            pipeline_data=pipeline_data,
-            min_trust_threshold=float(config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.5)),
-            geo_meta=effective_meta,
-        )
+        try:
+            receipt = generate_trust_receipt(
+                tile_idx=patch_idx,
+                raw_dir=None,
+                config=config,
+                pipeline_data=pipeline_data,
+                min_trust_threshold=float(config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.5)),
+                geo_meta=effective_meta,
+            )
+        except TypeError as te:
+            if "geo_meta" in str(te):
+                import importlib
+                import src.evaluation.trust_receipt as tr_mod
+                importlib.reload(tr_mod)
+                receipt = tr_mod.generate_trust_receipt(
+                    tile_idx=patch_idx,
+                    raw_dir=None,
+                    config=config,
+                    pipeline_data=pipeline_data,
+                    min_trust_threshold=float(config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.5)),
+                    geo_meta=effective_meta,
+                )
+            else:
+                raise
 
         return {
             "tile_idx": patch_idx,
