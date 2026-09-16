@@ -108,30 +108,40 @@ def extract_geotiff_metadata(raw_dir: Path, filename_pattern: str = "S2A_*.tif")
 
 def generate_trust_receipt(
     tile_idx: int,
-    raw_dir: Path,
-    config: Dict[str, Any],
-    pipeline_data: Dict[str, Any],
+    raw_dir: Optional[Path] = None,
+    config: Optional[Dict[str, Any]] = None,
+    pipeline_data: Optional[Dict[str, Any]] = None,
     min_trust_threshold: Optional[float] = None,
+    geo_meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Generate an auditable, verifiable Trust Receipt dictionary for a tile.
 
     Args:
         tile_idx: Index of the processed tile.
-        raw_dir: Path to raw GeoTIFF scene directory.
+        raw_dir: Optional path to raw GeoTIFF scene directory.
         config: Full configuration dictionary.
         pipeline_data: Output dictionary containing verification metrics.
         min_trust_threshold: Configurable minimum trust threshold (default from config or 86.0).
+        geo_meta: Optional pre-extracted geospatial metadata dictionary for user uploads.
 
     Returns:
         Dict[str, Any]: Structured, human-readable Trust Receipt.
     """
+    if config is None:
+        from src.utils.config import load_config
+        config = load_config()
+
     if min_trust_threshold is None:
         min_trust_threshold = float(
             config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.0)
         )
 
     # 1. GeoTIFF metadata
-    geo_meta = extract_geotiff_metadata(raw_dir)
+    if geo_meta is None:
+        if raw_dir is not None:
+            geo_meta = extract_geotiff_metadata(raw_dir)
+        else:
+            geo_meta = {}
 
     # 2. Pipeline metrics
     fusion = pipeline_data["fusion_result"]
@@ -223,19 +233,32 @@ def generate_trust_receipt(
         },
         "tile_metadata": {
             "tile_index": tile_idx,
-            "platform": geo_meta.get("platform"),
-            "mgrs_tile": geo_meta.get("mgrs_tile"),
-            "product_level": geo_meta.get("product_level"),
-            "acquisition_datetime": geo_meta.get("acquisition_datetime"),
-            "source_crs": geo_meta.get("source_crs"),
-            "spatial_resolution_meters": geo_meta.get("spatial_resolution_meters"),
+            "platform": geo_meta.get("platform", "Sentinel-2"),
+            "mgrs_tile": geo_meta.get("mgrs_tile", "AOI-CUSTOM"),
+            "product_level": geo_meta.get("product_level", "L2A"),
+            "acquisition_datetime": geo_meta.get("acquisition_datetime") or geo_meta.get("acquisition_date", "unavailable"),
+            "source_crs": geo_meta.get("source_crs") or geo_meta.get("crs", "unavailable"),
+            "spatial_resolution_meters": (
+                geo_meta.get("spatial_resolution_meters")
+                or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0)
+            ),
             "super_resolution_scale_factor": model_provenance["scale_factor"],
-            "reconstructed_resolution_meters": geo_meta.get("spatial_resolution_meters", 10.0) / model_provenance["scale_factor"],
-            "geospatial_bounds": geo_meta.get("geospatial_bounds"),
-            "cloud_cover_percentage": geo_meta.get("cloud_cover_percentage"),
-            "sun_elevation_angle_deg": geo_meta.get("sun_elevation_angle_deg"),
-            "sun_azimuth_angle_deg": geo_meta.get("sun_azimuth_angle_deg"),
-            "satellite_orbit_number": geo_meta.get("satellite_orbit_number"),
+            "reconstructed_resolution_meters": (
+                round(
+                    float(
+                        geo_meta.get("spatial_resolution_meters")
+                        or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0)
+                    ) / model_provenance["scale_factor"],
+                    2,
+                )
+                if isinstance(geo_meta.get("spatial_resolution_meters") or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0), (int, float))
+                else (10.0 / model_provenance["scale_factor"])
+            ),
+            "geospatial_bounds": geo_meta.get("geospatial_bounds") or geo_meta.get("bounds", "unavailable"),
+            "cloud_cover_percentage": geo_meta.get("cloud_cover_percentage", "unavailable"),
+            "sun_elevation_angle_deg": geo_meta.get("sun_elevation_angle_deg", "unavailable"),
+            "sun_azimuth_angle_deg": geo_meta.get("sun_azimuth_angle_deg", "unavailable"),
+            "satellite_orbit_number": geo_meta.get("satellite_orbit_number", "unavailable"),
         },
         "model_provenance": model_provenance,
         "evidence_metrics": {

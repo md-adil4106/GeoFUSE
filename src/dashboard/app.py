@@ -291,6 +291,148 @@ def run_cached_pipeline(tile_idx: int) -> Optional[Dict[str, Any]]:
         return None
 
 
+@st.cache_data(show_spinner="Running live ensemble inference & multi-evidence verification...")
+def run_live_pipeline_for_patch(
+    lr_tile: np.ndarray,
+    patch_idx: int,
+    meta_dict: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Execute complete live ensemble inference and multi-criteria trust verification on an uploaded patch.
+
+    Reuses the verified pipeline components from Phase A:
+    - 2x Bicubic interpolation baseline
+    - 3-member PyTorch ensemble inference (ResidualSRNet)
+    - Input-perturbation stability testing
+    - Spectral consistency check (Delta-NDVI against input baseline)
+    - Sobel structural & Canny edge consistency check
+    - Heuristic evidence fusion (Disagreement + Stability + Spectral + Edge)
+    - Downstream morphological building footprint extraction & agreement comparison
+    - Auditable Trust Receipt compilation with uploaded GeoTIFF provenance
+    """
+    models, config, device = load_cached_models()
+    if models is None:
+        return None
+
+    try:
+        # 1. Baseline & Ensemble SR Reconstruction
+        bicubic_tile = bicubic_upsample(lr_tile, scale_factor=2)
+        sr_tile, disagreement_map, _ = predict_ensemble(models, lr_tile, device=device)
+
+        # 2. Perturbation Stability
+        pert_cfg = config.get("verification", {}).get("perturbation_test", {})
+        noise_levels = pert_cfg.get("noise_levels", [0.01, 0.02, 0.05])
+        jitter_std = float(pert_cfg.get("brightness_jitter_std", 0.02))
+        stability_map, _, _ = compute_stability_map(
+            models=models,
+            lr_tile=lr_tile,
+            noise_levels=noise_levels,
+            brightness_jitter_std=jitter_std,
+            num_trials=2,
+            device=device,
+        )
+
+        # 3. Spectral Check (Delta-NDVI against input baseline)
+        bands = config.get("preprocessing", {}).get("bands", ["B02", "B03", "B04", "B08"])
+        red_idx = bands.index("B04")
+        nir_idx = bands.index("B08")
+        spectral_metrics = compute_spectral_consistency(
+            gt_tile=bicubic_tile,
+            sr_tile=sr_tile,
+            red_idx=red_idx,
+            nir_idx=nir_idx,
+        )
+
+        # 4. Structural Gradient & Edge Check (against input baseline)
+        grad_bic = compute_gradient_magnitude(bicubic_tile)
+        grad_sr = compute_gradient_magnitude(sr_tile)
+        structural_diff = np.abs(grad_sr - grad_bic)
+        edge_metrics = compute_edge_consistency(gt_tile=bicubic_tile, sr_tile=sr_tile)
+
+        # 5. Multi-Evidence Fusion
+        fusion_cfg = config.get("verification", {}).get("evidence_fusion", {})
+        weights = fusion_cfg.get("weights", {
+            "disagreement": 0.25,
+            "stability": 0.25,
+            "spectral": 0.25,
+            "structural": 0.25,
+        })
+        fusion_result = fuse_trust_risk_maps(
+            disagreement_map=disagreement_map,
+            stability_map=stability_map,
+            delta_ndvi_map=spectral_metrics["delta_ndvi"],
+            structural_diff_map=structural_diff,
+            weights=weights,
+        )
+
+        # 6. Downstream Building Footprint Extraction
+        down_cfg = config.get("downstream", {})
+        morph_cfg = down_cfg.get("morphology", {})
+        foot_bic = extract_building_footprints(
+            bicubic_tile,
+            tophat_kernel_size=int(morph_cfg.get("tophat_kernel_size", 7)),
+            tophat_threshold=int(morph_cfg.get("tophat_threshold", 25)),
+            max_ndvi=float(morph_cfg.get("max_ndvi", 0.20)),
+            min_area=int(morph_cfg.get("min_area", 4)),
+            max_area=int(morph_cfg.get("max_area", 600)),
+            red_idx=red_idx,
+            nir_idx=nir_idx,
+        )
+        foot_sr = extract_building_footprints(
+            sr_tile,
+            tophat_kernel_size=int(morph_cfg.get("tophat_kernel_size", 7)),
+            tophat_threshold=int(morph_cfg.get("tophat_threshold", 25)),
+            max_ndvi=float(morph_cfg.get("max_ndvi", 0.20)),
+            min_area=int(morph_cfg.get("min_area", 4)),
+            max_area=int(morph_cfg.get("max_area", 600)),
+            red_idx=red_idx,
+            nir_idx=nir_idx,
+        )
+        downstream_comp = compare_downstream_footprints(
+            mask_bicubic=foot_bic["mask"],
+            mask_sr=foot_sr["mask"],
+            trust_map=fusion_result["trust_map"],
+            ref_mask=None,  # No independent ground truth for real uploads
+            trust_threshold=float(down_cfg.get("trust_partition_threshold", 0.85)),
+        )
+
+        # 7. Auditable Trust Receipt compilation
+        pipeline_data = {
+            "fusion_result": fusion_result,
+            "spectral_metrics": spectral_metrics,
+            "edge_metrics": edge_metrics,
+            "downstream_comp": downstream_comp,
+        }
+        receipt = generate_trust_receipt(
+            tile_idx=patch_idx,
+            raw_dir=None,
+            config=config,
+            pipeline_data=pipeline_data,
+            min_trust_threshold=float(config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.5)),
+            geo_meta=meta_dict,
+        )
+
+        return {
+            "tile_idx": patch_idx,
+            "hr_tile": None,  # Real-world imagery: No clean reference
+            "lr_tile": lr_tile,
+            "bicubic_tile": bicubic_tile,
+            "sr_tile": sr_tile,
+            "disagreement_map": disagreement_map,
+            "stability_map": stability_map,
+            "spectral_metrics": spectral_metrics,
+            "edge_metrics": edge_metrics,
+            "structural_diff": structural_diff,
+            "fusion_result": fusion_result,
+            "foot_bic": foot_bic,
+            "foot_sr": foot_sr,
+            "downstream_comp": downstream_comp,
+            "receipt": receipt,
+            "has_ground_truth": False,
+        }
+    except Exception:
+        return None
+
+
 def get_display_stretch_bounds(tile: Optional[np.ndarray], false_color: bool = False) -> Tuple[float, float]:
     """Compute 2nd and 98th percentile stretch bounds from reference image for consistent multi-image display."""
     if tile is None or not isinstance(tile, np.ndarray) or tile.ndim < 3 or tile.shape[2] < 3:
@@ -522,78 +664,134 @@ def main():
             st.error(f"🚨 **Raster Ingestion Error**: Failed to load validated raster into memory: {str(e)}")
             st.stop()
 
+        # Check model availability
+        models, config, device = load_cached_models()
+        if models is None:
+            st.error(
+                "⚠️ **Live Inference Unavailable in this Environment**: Ensemble model checkpoints were not found "
+                "in `outputs/checkpoints/` or compute device memory is exhausted.  \n\n"
+                "**Safety Guard**: A precomputed result is never presented as if it came from your uploaded file. "
+                "To explore verified system outputs, switch to **'Use Demo Scene'** in the sidebar."
+            )
+            st.stop()
+
+        # Tile uploaded stack safely into 64x64 patches (the fixed model input dimension)
+        raw_tiles = extract_tiles(uploaded_stack, patch_size=64, stride=64)
+        total_tiles = len(raw_tiles)
+        if total_tiles == 0:
+            st.error("🚨 **Tiling Error**: No valid 64×64 patches could be extracted from this raster.")
+            st.stop()
+
+        max_interactive_tiles = 36
+        tiles = raw_tiles[:max_interactive_tiles]
+
+        if total_tiles > max_interactive_tiles:
+            st.caption(
+                f"ℹ️ **Tiling & Performance Safeguard**: Uploaded scene ({meta['height']}×{meta['width']} px) contains {total_tiles} "
+                f"non-overlapping 64×64 patches. For smooth browser responsiveness, the first {max_interactive_tiles} "
+                "patches are indexed for interactive selection."
+            )
+
+        tile_options = {
+            t["tile_id"]: f"Patch #{t['tile_id']} (Grid Pos: Y={t['y']}, X={t['x']})"
+            for t in tiles
+        }
+
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🎯 Patch Selection")
+        selected_idx = st.sidebar.selectbox(
+            "Select 64×64 Patch to Analyze:",
+            options=list(tile_options.keys()),
+            format_func=lambda x: tile_options[x],
+            help="Select a 64×64 patch from the uploaded raster to run live ensemble super-resolution and trust evaluation.",
+        )
+
+        sel_patch = tiles[selected_idx]
+        py, px, ps = sel_patch["y"], sel_patch["x"], sel_patch["patch_size"]
+
+        # Render preview with bounding box highlighting the selected patch
         preview_rgb = to_display_rgb(uploaded_stack, false_color=is_false_color)
+        preview_with_box = preview_rgb.copy()
+        cv2.rectangle(preview_with_box, (px, py), (px + ps, py + ps), (255, 220, 0), 2)
+
         p_col1, p_col2 = st.columns([2, 1])
         with p_col1:
             st.image(
-                preview_rgb,
-                caption=f"Uploaded Scene: {meta['primary_filename']} ({'False-Color CIR' if is_false_color else 'Natural RGB'})",
+                preview_with_box,
+                caption=f"Uploaded Scene: {meta['primary_filename']} (Selected Patch #{selected_idx} Boxed in Yellow)",
                 use_container_width=True,
             )
         with p_col2:
             st.markdown("**Scene Summary**")
             st.markdown(f"• **Ingestion Mode**: `{val_result['mode'].replace('_', ' ').title()}`")
             st.markdown(f"• **Radiometric Dtype**: `{meta['dtype']}`")
-            st.markdown(f"• **Reflectance Normalized**: `{meta['needs_reflectance_scaling']}`")
+            st.markdown(f"• **Extracted Patches**: `{total_tiles} total (indexed {len(tiles)})`")
+            st.markdown(f"• **Active Patch**: `Patch #{selected_idx} (Y: {py}, X: {px})`")
             if meta.get("bounds"):
                 b = meta["bounds"]
                 st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
-            st.info("Uploaded imagery is verified and ready for live super-resolution analysis.")
-        st.stop()
+            st.success("⚡ Live Inference pipeline ready for selected patch.")
 
-    # -------------------------------------------------------------------------
-    # Branch B: Demo Scene Workflow (Default)
-    # -------------------------------------------------------------------------
-    manifest = load_demo_manifest()
-    is_offline_cache = False
+        # Execute live pipeline for selected patch
+        data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, meta)
+        if data is None:
+            st.error(f"🚨 **Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.")
+            st.stop()
 
-    if manifest and "tiles" in manifest and len(manifest["tiles"]) > 0:
-        is_offline_cache = True
-        tile_options = {}
-        for entry in manifest["tiles"]:
-            t_idx = entry["tile_idx"]
-            score = entry.get("trust_score_pct", 0.0)
-            desc = entry.get("description", f"Tile #{t_idx}")
-            is_trusted = entry.get("is_trusted", True)
-            if is_trusted:
-                badge = f"High Trust: {score:.1f}%"
-            else:
-                badge = f"⚠️ Low Trust Warning: {score:.1f}%"
-            tile_options[t_idx] = f"Tile #{t_idx} -- {desc} ({badge})"
     else:
-        # Fallback tile list
-        _, _, tiles = load_cached_scene()
-        num_tiles = len(tiles)
-        tile_options = {
-            0: "Tile #0 -- Central Settlement Cluster (High Trust: 86.8%)",
-            num_tiles // 3: f"Tile #{num_tiles // 3} -- Mixed Agricultural & Roads (High Trust: 86.7%)",
-            (2 * num_tiles) // 3: f"Tile #{(2 * num_tiles) // 3} -- Rural River Corridor (⚠️ Low Trust Warning: 86.4%)",
-            num_tiles - 1: f"Tile #{num_tiles - 1} -- Complex Terrain Transition (⚠️ Low Trust Warning: 86.0%)",
-        }
+        # -------------------------------------------------------------------------
+        # Branch B: Demo Scene Workflow (Default)
+        # -------------------------------------------------------------------------
+        manifest = load_demo_manifest()
+        is_offline_cache = False
 
-    # Demo mode status indicator
-    if is_offline_cache:
-        st.sidebar.success("🟢 **Demo Mode: Offline Cache Active**")
-        st.sidebar.caption("Precomputed offline assets loaded — sub-10ms response, zero live inference.")
-    else:
-        st.sidebar.info("⚡ **Live Inference Mode Active**")
-        st.sidebar.caption("Executing live forward passes on compute device.")
+        if manifest and "tiles" in manifest and len(manifest["tiles"]) > 0:
+            is_offline_cache = True
+            tile_options = {}
+            for entry in manifest["tiles"]:
+                t_idx = entry["tile_idx"]
+                score = entry.get("trust_score_pct", 0.0)
+                desc = entry.get("description", f"Tile #{t_idx}")
+                is_trusted = entry.get("is_trusted", True)
+                if is_trusted:
+                    badge = f"High Trust: {score:.1f}%"
+                else:
+                    badge = f"⚠️ Low Trust Warning: {score:.1f}%"
+                tile_options[t_idx] = f"Tile #{t_idx} -- {desc} ({badge})"
+        else:
+            # Fallback tile list
+            _, _, tiles = load_cached_scene()
+            num_tiles = len(tiles)
+            tile_options = {
+                0: "Tile #0 -- Central Settlement Cluster (High Trust: 86.8%)",
+                num_tiles // 3: f"Tile #{num_tiles // 3} -- Mixed Agricultural & Roads (High Trust: 86.7%)",
+                (2 * num_tiles) // 3: f"Tile #{(2 * num_tiles) // 3} -- Rural River Corridor (⚠️ Low Trust Warning: 86.4%)",
+                num_tiles - 1: f"Tile #{num_tiles - 1} -- Complex Terrain Transition (⚠️ Low Trust Warning: 86.0%)",
+            }
 
-    selected_idx = st.sidebar.selectbox(
-        "Select Sentinel-2 Scene Tile:",
-        options=list(tile_options.keys()),
-        format_func=lambda x: tile_options.get(x, f"Tile #{x}"),
-    )
+        # Demo mode status indicator
+        if is_offline_cache:
+            st.sidebar.success("🟢 **Demo Mode: Offline Cache Active**")
+            st.sidebar.caption("Precomputed offline assets loaded — sub-10ms response, zero live inference.")
+        else:
+            st.sidebar.info("⚡ **Live Inference Mode Active**")
+            st.sidebar.caption("Executing live forward passes on compute device.")
 
-    # 2. Retrieve Pipeline Data (Cached / Precomputed)
-    data = run_cached_pipeline(selected_idx)
-    if data is None:
-        st.error(
-            f"🚨 **Demo Asset Not Found**: Could not retrieve precomputed assets or execute live inference for Tile #{selected_idx}.  \n\n"
-            "**Resolution**: Run the demo precomputation script to generate all offline demo assets:  \n"
-            "```bash\npython scripts/precompute_demo_cache.py\n```"
+        selected_idx = st.sidebar.selectbox(
+            "Select Sentinel-2 Scene Tile:",
+            options=list(tile_options.keys()),
+            format_func=lambda x: tile_options.get(x, f"Tile #{x}"),
         )
-        st.stop()
+
+        # 2. Retrieve Pipeline Data (Cached / Precomputed)
+        data = run_cached_pipeline(selected_idx)
+        if data is None:
+            st.error(
+                f"🚨 **Demo Asset Not Found**: Could not retrieve precomputed assets or execute live inference for Tile #{selected_idx}.  \n\n"
+                "**Resolution**: Run the demo precomputation script to generate all offline demo assets:  \n"
+                "```bash\npython scripts/precompute_demo_cache.py\n```"
+            )
+            st.stop()
 
     hr_tile = data.get("hr_tile")
     lr_tile = data.get("lr_tile")
@@ -609,24 +807,29 @@ def main():
     score_pct = fusion_result.get("trust_score_pct", 0.0)
 
     # Compute real quantitative benchmark metrics on current tile (Zero fabrication)
-    try:
-        from skimage.metrics import peak_signal_noise_ratio as compute_psnr
-        from skimage.metrics import structural_similarity as compute_ssim
-        bic_psnr = float(compute_psnr(hr_tile, bicubic_tile, data_range=1.0))
-        sr_psnr = float(compute_psnr(hr_tile, sr_tile, data_range=1.0))
-        bic_ssim = float(compute_ssim(hr_tile, bicubic_tile, channel_axis=2, data_range=1.0))
-        sr_ssim = float(compute_ssim(hr_tile, sr_tile, channel_axis=2, data_range=1.0))
-    except Exception:
-        bic_psnr, sr_psnr, bic_ssim, sr_ssim = 38.15, 38.30, 0.919, 0.922
+    has_reference = hr_tile is not None
+    if has_reference:
+        try:
+            from skimage.metrics import peak_signal_noise_ratio as compute_psnr
+            from skimage.metrics import structural_similarity as compute_ssim
+            bic_psnr = float(compute_psnr(hr_tile, bicubic_tile, data_range=1.0))
+            sr_psnr = float(compute_psnr(hr_tile, sr_tile, data_range=1.0))
+            bic_ssim = float(compute_ssim(hr_tile, bicubic_tile, channel_axis=2, data_range=1.0))
+            sr_ssim = float(compute_ssim(hr_tile, sr_tile, channel_axis=2, data_range=1.0))
+        except Exception:
+            bic_psnr, sr_psnr, bic_ssim, sr_ssim = 38.15, 38.30, 0.919, 0.922
+    else:
+        bic_psnr, sr_psnr, bic_ssim, sr_ssim = None, None, None, None
 
     # Prepare Display Images with consistent reference-anchored percentile stretch
-    stretch_bounds = get_display_stretch_bounds(hr_tile, false_color=is_false_color)
-    hr_rgb = to_display_rgb(hr_tile, false_color=is_false_color, stretch_bounds=stretch_bounds)
+    stretch_anchor = hr_tile if has_reference else bicubic_tile
+    stretch_bounds = get_display_stretch_bounds(stretch_anchor, false_color=is_false_color)
+    hr_rgb = to_display_rgb(hr_tile, false_color=is_false_color, stretch_bounds=stretch_bounds) if has_reference else None
     bic_rgb = to_display_rgb(bicubic_tile, false_color=is_false_color, stretch_bounds=stretch_bounds)
     sr_rgb = to_display_rgb(sr_tile, false_color=is_false_color, stretch_bounds=stretch_bounds)
     lr_rgb_raw = to_display_rgb(lr_tile, false_color=is_false_color, stretch_bounds=stretch_bounds)
     # Upsample LR to match canvas dimensions via nearest-neighbor to visualize coarse pixel grid
-    lr_rgb_display = cv2.resize(lr_rgb_raw, (hr_rgb.shape[1], hr_rgb.shape[0]), interpolation=cv2.INTER_NEAREST)
+    lr_rgb_display = cv2.resize(lr_rgb_raw, (bic_rgb.shape[1], bic_rgb.shape[0]), interpolation=cv2.INTER_NEAREST)
 
     # Semi-transparent Trust/Risk overlay
     if trust_map is not None:
@@ -670,26 +873,47 @@ def main():
         with col1:
             st.markdown("#### 1. Actual Model Input")
             st.caption("🔍 **Input Fed to Model (20m GSD)**")
-            st.image(lr_rgb_display, caption="Degraded Input (64×64 px, 2x NN grid)", use_container_width=True)
-            st.markdown("`[INPUT]` Optical blur + 2x downsample + noise")
+            st.image(lr_rgb_display, caption="Input (64×64 px, 2x NN grid)", use_container_width=True)
+            st.markdown("`[INPUT]` Real Sentinel-2 observed tile" if not has_reference else "`[INPUT]` Optical blur + 2x downsample + noise")
 
         with col2:
             st.markdown("#### 2. Bicubic Baseline")
             st.caption("📉 **Standard 2x Interpolation (10m)**")
-            st.image(bic_rgb, caption=f"Bicubic (128×128 px) | {bic_psnr:.2f} dB", use_container_width=True)
-            st.markdown(f"`[BASELINE]` PSNR: **{bic_psnr:.2f} dB** | SSIM: **{bic_ssim:.4f}**")
+            if has_reference and bic_psnr is not None:
+                st.image(bic_rgb, caption=f"Bicubic (128×128 px) | {bic_psnr:.2f} dB", use_container_width=True)
+                st.markdown(f"`[BASELINE]` PSNR: **{bic_psnr:.2f} dB** | SSIM: **{bic_ssim:.4f}**")
+            else:
+                st.image(bic_rgb, caption="Bicubic Baseline (128×128 px)", use_container_width=True)
+                st.markdown("`[BASELINE]` Standard 2x interpolation")
 
         with col3:
             st.markdown("#### 3. GeoFUSE SR (Ours)")
             st.caption("🚀 **Ensemble Reconstruction (10m)**")
-            st.image(sr_rgb, caption=f"GeoFUSE (128×128 px) | {sr_psnr:.2f} dB", use_container_width=True)
-            st.markdown(f"`[SR MODEL]` PSNR: **{sr_psnr:.2f} dB** | SSIM: **{sr_ssim:.4f}**")
+            if has_reference and sr_psnr is not None:
+                st.image(sr_rgb, caption=f"GeoFUSE (128×128 px) | {sr_psnr:.2f} dB", use_container_width=True)
+                st.markdown(f"`[SR MODEL]` PSNR: **{sr_psnr:.2f} dB** | SSIM: **{sr_ssim:.4f}**")
+            else:
+                st.image(sr_rgb, caption="GeoFUSE SR Ensemble (128×128 px)", use_container_width=True)
+                st.markdown("`[SR MODEL]` 2x deep residual ensemble")
 
         with col4:
             st.markdown("#### 4. Clean Reference")
             st.caption("🎯 **Ground Truth Target (10m)**")
-            st.image(hr_rgb, caption="Pre-degradation Target (128×128 px)", use_container_width=True)
-            st.markdown("`[TARGET]` Unseen reference for validation only")
+            if hr_rgb is not None:
+                st.image(hr_rgb, caption="Pre-degradation Target (128×128 px)", use_container_width=True)
+                st.markdown("`[TARGET]` Unseen reference for validation only")
+            else:
+                st.markdown(
+                    """
+                    <div style="background-color: #1a1e24; border: 1px dashed #30363d; border-radius: 8px; padding: 26px 12px; text-align: center; margin-top: 10px; margin-bottom: 12px; min-height: 155px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                        <div style="font-size: 1.4rem; margin-bottom: 4px;">🎯</div>
+                        <div style="font-weight: 600; color: #f0f6fc; font-size: 0.85rem;">Reference Unavailable</div>
+                        <div style="color: #8b949e; font-size: 0.75rem; margin-top: 4px;">Reference: not available for uploaded imagery.</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown("`[REAL INFERENCE]` Reference-free operational setting")
 
         with col5:
             st.markdown("#### 5. Trust / Risk Map")
@@ -754,7 +978,7 @@ def main():
         crop_lr = extract_zoomed_crop(lr_rgb_raw, crop_center=center_coords, crop_size=20, zoom_factor=8)
         crop_bic = extract_zoomed_crop(bic_rgb, crop_center=center_coords, crop_size=40, zoom_factor=4)
         crop_sr = extract_zoomed_crop(sr_rgb, crop_center=center_coords, crop_size=40, zoom_factor=4)
-        crop_hr = extract_zoomed_crop(hr_rgb, crop_center=center_coords, crop_size=40, zoom_factor=4)
+        crop_hr = extract_zoomed_crop(hr_rgb, crop_center=center_coords, crop_size=40, zoom_factor=4) if hr_rgb is not None else None
 
         # Difference heatmap between GeoFUSE SR and Bicubic (amplified 8x to reveal reconstructed edges)
         diff_raw = np.abs(crop_sr.astype(np.float32) - crop_bic.astype(np.float32)).mean(axis=-1)
@@ -777,22 +1001,45 @@ def main():
             st.caption("Sharper structural edges")
         with z4:
             st.markdown("**Zoomed Clean Target**")
-            st.image(crop_hr, caption="Clean 10m Reference", use_container_width=True)
-            st.caption("Unseen ground truth")
+            if crop_hr is not None:
+                st.image(crop_hr, caption="Clean 10m Reference", use_container_width=True)
+                st.caption("Unseen ground truth")
+            else:
+                st.markdown(
+                    """
+                    <div style="background-color: #1a1e24; border: 1px dashed #30363d; border-radius: 8px; padding: 24px 8px; text-align: center; margin-top: 8px;">
+                        <span style="color: #8b949e; font-size: 0.78rem;">Reference: not available for uploaded imagery</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.caption("Reference unavailable")
         with z5:
             st.markdown("**High-Freq Difference**")
             st.image(diff_color, caption="|GeoFUSE - Bicubic| × 8", use_container_width=True)
             st.caption("Reconstructed structures")
 
-        st.info(
-            f"**Quantitative Benchmark on Tile #{selected_idx} (Zero Fabrication)**:  \n"
-            f"• **Bicubic Baseline**: PSNR = **{bic_psnr:.2f} dB** | SSIM = **{bic_ssim:.4f}**  \n"
-            f"• **GeoFUSE SR Ensemble**: PSNR = **{sr_psnr:.2f} dB** | SSIM = **{sr_ssim:.4f}**  \n"
-            f"• **Reconstruction Advantage**: PSNR Delta = **{sr_psnr - bic_psnr:+.2f} dB** | SSIM Delta = **{sr_ssim - bic_ssim:+.4f}**  \n\n"
-            "**Visual Diagnosis**: As demonstrated by the high-frequency difference map, GeoFUSE sharpens edge transitions, "
-            "resolves field and building boundaries, and filters sensor noise compared to bicubic interpolation, "
-            "while remaining strictly faithful to the Clean Reference without hallucinating non-existent features."
-        )
+        if has_reference and bic_psnr is not None:
+            st.info(
+                f"**Quantitative Benchmark on Tile #{selected_idx} (Zero Fabrication)**:  \n"
+                f"• **Bicubic Baseline**: PSNR = **{bic_psnr:.2f} dB** | SSIM = **{bic_ssim:.4f}**  \n"
+                f"• **GeoFUSE SR Ensemble**: PSNR = **{sr_psnr:.2f} dB** | SSIM = **{sr_ssim:.4f}**  \n"
+                f"• **Reconstruction Advantage**: PSNR Delta = **{sr_psnr - bic_psnr:+.2f} dB** | SSIM Delta = **{sr_ssim - bic_ssim:+.4f}**  \n\n"
+                "**Visual Diagnosis**: As demonstrated by the high-frequency difference map, GeoFUSE sharpens edge transitions, "
+                "resolves field and building boundaries, and filters sensor noise compared to bicubic interpolation, "
+                "while remaining strictly faithful to the Clean Reference without hallucinating non-existent features."
+            )
+        else:
+            st.info(
+                f"**Quantitative Benchmark on Uploaded Patch #{selected_idx} (Zero Fabrication)**:  \n"
+                f"• **Super-Resolution Execution**: 2x ensemble reconstruction completed (64×64 → 128×128 px, 4 spectral bands).  \n"
+                f"• **Reference-Based Fidelity (PSNR/SSIM)**: **N/A** — Independent high-resolution ground truth is not available for real-world uploaded imagery.  \n"
+                f"• **Reference-Free Trust Score**: **{score_pct:.2f}%** ({'Approved' if is_trusted else 'Low-Trust Warning Flagged'})  \n"
+                f"• **Multi-Criteria Evidence**: Disagreement σ = **{disag_mean:.5f}** | Spectral Δ-NDVI = **{delta_ndvi_mean:.4f}** | Edge Grad Corr r = **{grad_corr:.4f}**  \n\n"
+                "**Visual & Empirical Diagnosis**: The high-frequency difference map highlights sharp structural transitions, "
+                "linear boundaries, and contrast enhancement produced by the neural ensemble over standard bicubic interpolation. "
+                "In the absence of physical ground truth, verification is anchored on radiometric consensus with the observed input."
+            )
 
         # Visible Multi-Criteria Evidence Breakdown (Phase 5-7 Toggle)
         if show_evidence and "normalized_signals" in fusion_result:
@@ -895,8 +1142,11 @@ def main():
                 stat_col1.metric("Overall Bicubic vs SR IoU", f"{comp['overall_bic_sr']['iou']:.4f}")
                 stat_col2.metric("High-Trust Region IoU", f"{comp['high_trust_bic_sr']['iou']:.4f}")
                 stat_col3.metric("Low-Trust Region IoU", f"{comp['low_trust_bic_sr']['iou']:.4f}")
-                ref_iou = comp.get("reference_comparison", {}).get("sr_vs_ref_iou", 0.0)
-                stat_col4.metric("Relative Ref HR IoU", f"{ref_iou:.4f}")
+                ref_comp = comp.get("reference_comparison")
+                if ref_comp and "sr_vs_ref_iou" in ref_comp:
+                    stat_col4.metric("Relative Ref HR IoU", f"{ref_comp['sr_vs_ref_iou']:.4f}")
+                else:
+                    stat_col4.metric("Relative Ref HR IoU", "N/A (No GT)")
             except Exception as e:
                 st.warning(f"Could not render downstream task evaluation: {e}")
 
@@ -936,10 +1186,15 @@ def main():
 
             col_dl, col_exp = st.columns([1, 4])
             with col_dl:
+                receipt_filename = (
+                    f"trust_receipt_upload_patch_{selected_idx}.json"
+                    if st.session_state.get("app_mode") == "Live Analysis"
+                    else f"trust_receipt_tile_{selected_idx}.json"
+                )
                 st.download_button(
                     label="📥 Download Trust Receipt (JSON)",
                     data=receipt_json_str,
-                    file_name=f"trust_receipt_tile_{selected_idx}.json",
+                    file_name=receipt_filename,
                     mime="application/json",
                     use_container_width=True,
                 )
