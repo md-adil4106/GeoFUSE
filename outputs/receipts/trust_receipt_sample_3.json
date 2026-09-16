@@ -1,7 +1,7 @@
 {
   "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
-  "receipt_id": "TR-Sentinel-2A-43PGQ-T03-1789375166",
-  "generation_timestamp": "2026-09-14 08:39:26 UTC",
+  "receipt_id": "TR-Sentinel-2A-43PGQ-T03-1789587760",
+  "generation_timestamp": "2026-09-16 19:42:40 UTC",
   "project": {
     "name": "GeoFUSE SentinelGuard",
     "version": "0.1.0",
@@ -37,14 +37,14 @@
     "framework": "PyTorch",
     "architecture": "ResidualSRNet",
     "scale_factor": 2,
-    "num_residual_blocks": 4,
+    "num_residual_blocks": 6,
     "num_features": 48,
-    "parameter_count": 273700,
+    "parameter_count": 356836,
     "ensemble_size": 3,
     "checkpoint_ids": [
-      "outputs/checkpoints/ensemble_member_0.pth",
-      "outputs/checkpoints/ensemble_member_1.pth",
-      "outputs/checkpoints/ensemble_member_2.pth"
+      "checkpoints/final_demo_v1/ensemble_member_0.pth",
+      "checkpoints/final_demo_v1/ensemble_member_1.pth",
+      "checkpoints/final_demo_v1/ensemble_member_2.pth"
     ],
     "ensemble_member_seeds": [
       42,
@@ -66,23 +66,23 @@
     "disagreement_proxy": {
       "metric_name": "Ensemble Standard Deviation (sigma)",
       "interpretation": "Epistemic model uncertainty proxy",
-      "raw_mean": 0.0015672292793169618,
-      "raw_max": 0.010087499395012856,
+      "raw_mean": 0.0015672593144699931,
+      "raw_max": 0.01008640881627798,
       "weight": 0.25
     },
     "stability_proxy": {
       "metric_name": "Perturbation Output Variance",
       "interpretation": "Sensitivity to sensor noise and brightness shifts",
-      "raw_mean": 0.0005058762617409229,
-      "raw_max": 0.0023713570553809404,
+      "raw_mean": 0.0005058766109868884,
+      "raw_max": 0.0023713409900665283,
       "weight": 0.25
     },
     "spectral_consistency": {
       "metric_name": "Absolute Delta-NDVI Error",
       "interpretation": "Radiometric fidelity of vegetation spectra",
       "mean_delta_ndvi": 0.02137,
-      "max_delta_ndvi": 0.15457,
-      "pct_inconsistent_pixels": 7.48,
+      "max_delta_ndvi": 0.15456,
+      "pct_inconsistent_pixels": 7.47,
       "is_consistent": true,
       "weight": 0.25
     },
@@ -90,8 +90,8 @@
       "metric_name": "Sobel Gradient Correlation & Canny Alignment",
       "interpretation": "High-frequency boundary and edge fidelity",
       "gradient_correlation_r": 0.7998,
-      "canny_edge_iou": 0.3806,
-      "canny_edge_f1": 0.5514,
+      "canny_edge_iou": 0.381,
+      "canny_edge_f1": 0.5517,
       "weight": 0.25
     },
     "downstream_task_evaluation": {
@@ -100,8 +100,8 @@
       "bicubic_vs_sr_iou": 0.9171,
       "bicubic_vs_sr_dice": 0.9567,
       "high_trust_region_iou": 0.9163,
-      "low_trust_region_iou": 0.9181,
-      "high_trust_area_pct": 63.51,
+      "low_trust_region_iou": 0.9182,
+      "high_trust_area_pct": 63.5,
       "relative_reference_hr_iou": 0.5275
     }
   },

@@ -76,11 +76,15 @@ checkpoints/*
 !checkpoints/ensemble_v2/*
 !checkpoints/sr_experiment_scale3x/
 !checkpoints/sr_experiment_scale3x/*
+!checkpoints/final_demo_v1/
+!checkpoints/final_demo_v1/*
 *.pt
 *.pth
 !checkpoints/baseline_exp001/*.pth
 !checkpoints/ensemble_v2/*.pt
 !checkpoints/ensemble_v2/*.pth
+!checkpoints/final_demo_v1/*.pt
+!checkpoints/final_demo_v1/*.pth
 !checkpoints/sr_experiment_scale3x/*.pth
 !checkpoints/sr_experiment_scale3x/*.pt
 *.onnx

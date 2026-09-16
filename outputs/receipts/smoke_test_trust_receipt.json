@@ -1,7 +1,7 @@
 {
   "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
-  "receipt_id": "TR-Sentinel-2A-43PGQ-T02-1789587760",
-  "generation_timestamp": "2026-09-16 19:42:40 UTC",
+  "receipt_id": "TR-Sentinel-2A-43PGQ-T00-1789587649",
+  "generation_timestamp": "2026-09-16 19:40:49 UTC",
   "project": {
     "name": "GeoFUSE SentinelGuard",
     "version": "0.1.0",
@@ -13,7 +13,7 @@
     "scale_invariance_guard": "All evidence signals are individually normalized to [0, 1] via min-max scaling to prevent scale dominance."
   },
   "tile_metadata": {
-    "tile_index": 2,
+    "tile_index": 0,
     "platform": "Sentinel-2A",
     "mgrs_tile": "43PGQ",
     "product_level": "L2A",
@@ -54,8 +54,8 @@
     "geographic_hold_out_split": "Strict Southeast Quadrant (rows 256..512, cols 256..512) - Zero Spatial Leakage"
   },
   "evidence_metrics": {
-    "fused_trust_score_pct": 86.42,
-    "mean_composite_risk": 0.1358,
+    "fused_trust_score_pct": 85.5,
+    "mean_composite_risk": 0.145,
     "pct_high_risk_pixels": 0.0,
     "weights_used": {
       "disagreement": 0.25,
@@ -66,43 +66,43 @@
     "disagreement_proxy": {
       "metric_name": "Ensemble Standard Deviation (sigma)",
       "interpretation": "Epistemic model uncertainty proxy",
-      "raw_mean": 0.0014940706314519048,
-      "raw_max": 0.011913584545254707,
+      "raw_mean": 0.001697808736935258,
+      "raw_max": 0.009062554687261581,
       "weight": 0.25
     },
     "stability_proxy": {
       "metric_name": "Perturbation Output Variance",
       "interpretation": "Sensitivity to sensor noise and brightness shifts",
-      "raw_mean": 0.0005049588507972658,
-      "raw_max": 0.002372205723077059,
+      "raw_mean": 0.0004937147023156285,
+      "raw_max": 0.002361220307648182,
       "weight": 0.25
     },
     "spectral_consistency": {
       "metric_name": "Absolute Delta-NDVI Error",
       "interpretation": "Radiometric fidelity of vegetation spectra",
-      "mean_delta_ndvi": 0.02122,
-      "max_delta_ndvi": 0.13998,
-      "pct_inconsistent_pixels": 6.57,
+      "mean_delta_ndvi": 0.02147,
+      "max_delta_ndvi": 0.15168,
+      "pct_inconsistent_pixels": 7.31,
       "is_consistent": true,
       "weight": 0.25
     },
     "structural_consistency": {
       "metric_name": "Sobel Gradient Correlation & Canny Alignment",
       "interpretation": "High-frequency boundary and edge fidelity",
-      "gradient_correlation_r": 0.7827,
-      "canny_edge_iou": 0.3918,
-      "canny_edge_f1": 0.563,
+      "gradient_correlation_r": 0.796,
+      "canny_edge_iou": 0.4128,
+      "canny_edge_f1": 0.5844,
       "weight": 0.25
     },
     "downstream_task_evaluation": {
       "task": "Building Footprint Morphological Analysis",
       "scientific_label": "Bicubic-vs-SR Footprint Agreement (No Independent GT)",
-      "bicubic_vs_sr_iou": 0.9332,
-      "bicubic_vs_sr_dice": 0.9655,
-      "high_trust_region_iou": 0.9376,
-      "low_trust_region_iou": 0.9248,
-      "high_trust_area_pct": 66.98,
-      "relative_reference_hr_iou": 0.5384
+      "bicubic_vs_sr_iou": 0.9194,
+      "bicubic_vs_sr_dice": 0.958,
+      "high_trust_region_iou": 0.9208,
+      "low_trust_region_iou": 0.9173,
+      "high_trust_area_pct": 60.14,
+      "relative_reference_hr_iou": 0.4433
     }
   },
   "trust_evaluation": {
@@ -112,7 +112,7 @@
     "min_trust_threshold_evaluated": 86.5,
     "summary": "Reconstruction is usable with caveats. One or more empirical reliability indicators triggered advisories.",
     "warnings_and_advisories": [
-      "LOW TRUST WARNING: Composite Trust Score (86.42%) falls 0.08% below the configured operational threshold (86.50%). Reconstructed tile exhibits elevated boundary disagreement or spectral inconsistency. Automated downstream decisions should require manual human-in-the-loop review."
+      "LOW TRUST WARNING: Composite Trust Score (85.50%) falls 1.0% below the configured operational threshold (86.50%). Reconstructed tile exhibits elevated boundary disagreement or spectral inconsistency. Automated downstream decisions should require manual human-in-the-loop review."
     ]
   }
 }

@@ -13,6 +13,7 @@ paths:
   interim_data_dir: "data/interim"
   processed_data_dir: "data/processed"
   checkpoints_dir: "checkpoints"
+  final_demo_checkpoint_dir: "checkpoints/final_demo_v1"
   outputs_dir: "outputs"
   cache_dir: "cache"
   aoi_geojson_path: "data/aoi.geojson"
@@ -38,12 +39,12 @@ preprocessing:
 
 # Super-Resolution Model Hyperparameters
 model:
-  architecture: "rcan_light"  # Lightweight SR architecture
-  scale_factor: 2             # Nominally finer-resolution scale (2x or 4x)
+  architecture: "residual_srnet"  # 6-block ResidualSRNet locked for hackathon demo
+  scale_factor: 2             # Nominally finer-resolution scale (2x)
   num_channels: 4             # 4-band input (B02, B03, B04, B08)
   num_features: 48            # Keep lightweight for RTX 4060 laptop VRAM
   num_residual_groups: 3
-  num_residual_blocks: 4
+  num_residual_blocks: 6      # Phase 12 recommended locked depth
 
 # Training Hyperparameters
 training:
@@ -61,6 +62,7 @@ ensemble:
   ensemble_size: 3            # Small ensemble trained sequentially
   member_seeds: [42, 101, 2024]
   sequential_training: true   # Train sequentially to preserve memory
+  checkpoint_dir: "checkpoints/final_demo_v1"
 
 # Verification & Stability Checks
 verification:

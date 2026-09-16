@@ -46,7 +46,11 @@ def main() -> int:
     })
     high_risk_thresh = float(fusion_cfg.get("high_risk_threshold", 0.65))
 
-    checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
+    final_dir = root / "checkpoints" / "final_demo_v1"
+    if (final_dir / "ensemble_member_0.pth").exists():
+        checkpoints_dir = final_dir
+    else:
+        checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
     previews_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "previews"
     previews_dir.mkdir(parents=True, exist_ok=True)
 

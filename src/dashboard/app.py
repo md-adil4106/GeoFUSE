@@ -96,13 +96,34 @@ def load_cached_models():
         root = get_project_root()
         config = load_config()
         device = get_device(config)
-        ckpt_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
-        ckpt_paths = [ckpt_dir / f"ensemble_member_{i}.pth" for i in range(3)]
-        for p in ckpt_paths:
-            if not p.exists():
-                return None, config, device
-        models = load_ensemble_members(ckpt_paths, config=config, device=device)
-        return models, config, device
+
+        # Candidate checkpoint locations (prioritizing locked Phase 13 final demo checkpoints)
+        final_dir = root / "checkpoints" / "final_demo_v1"
+        candidate_sets = [
+            [final_dir / f"ensemble_member_{i}.pth" for i in range(3)],
+            [final_dir / f"member_{i}.pt" for i in range(3)],
+            [final_dir / f"member_{i}.pth" for i in range(3)],
+            [root / "checkpoints" / "ensemble_v2" / f"member_{i}.pt" for i in (1, 2, 3)],
+            [root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints" / f"ensemble_member_{i}.pth" for i in range(3)],
+        ]
+
+        ckpt_paths = None
+        for c_paths in candidate_sets:
+            if all(p.exists() for p in c_paths):
+                ckpt_paths = c_paths
+                break
+
+        if ckpt_paths is None:
+            return None, config, device
+
+        try:
+            models = load_ensemble_members(ckpt_paths, config=config, device=device)
+            return models, config, device
+        except Exception:
+            # Fallback to CPU if device loading failed (e.g. CUDA memory issue)
+            cpu_device = torch.device("cpu")
+            models = load_ensemble_members(ckpt_paths, config=config, device=cpu_device)
+            return models, config, cpu_device
     except Exception:
         return None, load_config(), torch.device("cpu")
 
@@ -316,8 +337,8 @@ def run_live_pipeline_for_patch(
     models, config, device = load_cached_models()
     if models is None:
         raise RuntimeError(
-            "Ensemble model checkpoints could not be loaded from outputs/checkpoints/. "
-            "Please ensure ensemble_member_0.pth, ensemble_member_1.pth, and ensemble_member_2.pth exist."
+            "Ensemble model checkpoints could not be loaded from checkpoints/final_demo_v1/ or outputs/checkpoints/. "
+            "Please ensure ensemble checkpoint files exist."
         )
 
     try:
@@ -1476,7 +1497,7 @@ def main():
         if models is None:
             st.error(
                 "**Live Inference Unavailable in this Environment**: Ensemble model checkpoints were not found "
-                "in `outputs/checkpoints/` or compute device memory is exhausted.  \n\n"
+                "in `checkpoints/final_demo_v1/` or compute device memory is exhausted.  \n\n"
                 "**Safety Guard**: A precomputed result is never presented as if it came from your uploaded file. "
                 "To explore verified system outputs, switch to **'Use Demo Scene'** in the sidebar."
             )
@@ -1602,7 +1623,7 @@ def main():
         if data is None:
             st.error(
                 f"**Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.  \n"
-                "Please click '🚀 Execute Super-Resolution & Trust Verification' again or verify model checkpoints exist in `outputs/checkpoints/`."
+                "Please click '🚀 Execute Super-Resolution & Trust Verification' again or verify model checkpoints exist in `checkpoints/final_demo_v1/`."
             )
             st.stop()
 

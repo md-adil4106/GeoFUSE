@@ -54,7 +54,11 @@ def main() -> int:
     max_area = int(morph_cfg.get("max_area", 600))
     trust_thresh = float(down_cfg.get("trust_partition_threshold", 0.85))
 
-    checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
+    final_dir = root / "checkpoints" / "final_demo_v1"
+    if (final_dir / "ensemble_member_0.pth").exists():
+        checkpoints_dir = final_dir
+    else:
+        checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
     previews_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "previews"
     previews_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,0 +1,58 @@
+{
+  "model_name": "GeoFUSE-Ensemble-v2-Final",
+  "tag": "final_demo_v1",
+  "architecture": "ResidualSRNet-6b",
+  "num_blocks": 6,
+  "num_features": 48,
+  "num_channels": 4,
+  "out_channels": 4,
+  "scale_factor": 2,
+  "loss_function": "CompoundSRLoss (L1 + 0.20 * Sobel gradient)",
+  "epochs": 15,
+  "optimizer": "AdamW",
+  "learning_rate": 0.0005,
+  "lr_schedule": "CosineAnnealingLR",
+  "training_split": "Phase 5 clean split v2 (132 train / 36 val, zero spatial leakage)",
+  "validation_metrics": {
+    "psnr_mean_db": 38.83,
+    "psnr_std_db": 0.21,
+    "bicubic_psnr_mean_db": 38.64,
+    "psnr_gain_db": 0.19,
+    "ssim_mean": 0.929,
+    "ssim_std": 0.0039,
+    "delta_ndvi_mean": 0.02029,
+    "inconsistent_pixels_pct": 0.0,
+    "sobel_gradient_correlation": 0.9634,
+    "canny_edge_f1": 0.7719,
+    "perturbation_stability_variance": 0.0
+  },
+  "members": [
+    {
+      "member_index": 0,
+      "filename": "ensemble_member_0.pth",
+      "alternate_filename": "member_0.pt",
+      "source": "checkpoints/ensemble_v2/member_1.pt",
+      "seed": 42,
+      "sha256": "8e9b650342ac6370c7ac97131f2aabb65e1c24b1e82c7e5b2749d7af97729490",
+      "size_bytes": 1439002
+    },
+    {
+      "member_index": 1,
+      "filename": "ensemble_member_1.pth",
+      "alternate_filename": "member_1.pt",
+      "source": "checkpoints/ensemble_v2/member_2.pt",
+      "seed": 101,
+      "sha256": "f702ecebd9fa0e3b37b217ddd10c9f79f90b6a943f011668f1b16a13da907c0b",
+      "size_bytes": 1439002
+    },
+    {
+      "member_index": 2,
+      "filename": "ensemble_member_2.pth",
+      "alternate_filename": "member_2.pt",
+      "source": "checkpoints/ensemble_v2/member_3.pt",
+      "seed": 2024,
+      "sha256": "025427e1bd4b9f65084a7d5d203909bed1e6a356f9a77af77c2c63273aea090c",
+      "size_bytes": 1439002
+    }
+  ]
+}
