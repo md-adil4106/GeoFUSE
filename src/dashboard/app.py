@@ -518,6 +518,38 @@ def extract_zoomed_crop(
     return cv2.resize(crop, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
 
 
+def ensure_sample_geotiff() -> Path:
+    """Ensure a validated 128x128 4-band sample GeoTIFF exists in examples/sample_upload/."""
+    sample_path = get_project_root() / "examples/sample_upload/sample_s2_4band_128px.tif"
+    if sample_path.exists():
+        return sample_path
+
+    try:
+        sample_path.parent.mkdir(parents=True, exist_ok=True)
+        bundle = load_demo_bundle(0)
+        if bundle is not None and "hr_tile" in bundle:
+            tile = bundle["hr_tile"]
+            import rasterio
+            from rasterio.transform import from_origin
+            transform = from_origin(500000, 3000000, 10.0, 10.0)
+            with rasterio.open(
+                sample_path,
+                "w",
+                driver="GTiff",
+                height=tile.shape[0],
+                width=tile.shape[1],
+                count=4,
+                dtype="float32",
+                crs="EPSG:32643",
+                transform=transform,
+            ) as dst:
+                for i in range(4):
+                    dst.write(tile[:, :, i].astype(np.float32), i + 1)
+    except Exception:
+        pass
+    return sample_path
+
+
 # -----------------------------------------------------------------------------
 # Main Application UI
 # -----------------------------------------------------------------------------
@@ -599,14 +631,21 @@ def main():
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            background-color: #131720;
-            border: 1px solid #232a38;
             border-radius: 3px;
             padding: 6px 12px;
             font-size: 0.78rem;
             font-family: var(--font-mono);
-            color: #94a3b8;
             margin-top: 6px;
+        }
+        .sci-status-indicator.demo {
+            background-color: #101626;
+            border: 1px solid #1e3a8a;
+            color: #93c5fd;
+        }
+        .sci-status-indicator.live {
+            background-color: #241a10;
+            border: 1px solid #78350f;
+            color: #fcd34d;
         }
 
         /* Muted Monospace Image Labels */
@@ -706,8 +745,8 @@ def main():
         if st.session_state.get("app_mode") == "Live Analysis":
             st.markdown(
                 """
-                <div class="sci-status-indicator">
-                    <span style="color: #f59e0b;">●</span> Mode: Live User Upload
+                <div class="sci-status-indicator live">
+                    <span style="color: #f59e0b;">●</span> Mode: Live User Upload (Real-Time Inference)
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -715,7 +754,7 @@ def main():
         else:
             st.markdown(
                 """
-                <div class="sci-status-indicator">
+                <div class="sci-status-indicator demo">
                     <span style="color: #38bdf8;">●</span> Mode: Demo Scene (Offline Cache)
                 </div>
                 """,
@@ -761,6 +800,26 @@ def main():
             help="Upload either a single 4-band GeoTIFF (B02, B03, B04, B08) or 4 individual band files.",
         )
 
+        use_bundled_sample = st.sidebar.checkbox(
+            "Use Bundled Sample GeoTIFF (Presenter Demo)",
+            value=False,
+            help="Loads bundled 128×128 Sentinel-2 GeoTIFF (examples/sample_upload/sample_s2_4band_128px.tif) to demonstrate live validation, patch tiling, and real live ensemble inference without manual file selection.",
+        )
+
+        if not uploaded_files and use_bundled_sample:
+            sample_path = ensure_sample_geotiff()
+            if sample_path.exists():
+                class BundledSampleFile:
+                    def __init__(self, p: Path):
+                        self.name = p.name
+                        self._data = p.read_bytes()
+                    def getvalue(self) -> bytes:
+                        return self._data
+                    def read(self) -> bytes:
+                        return self._data
+                uploaded_files = [BundledSampleFile(sample_path)]
+                st.sidebar.caption("Active: `sample_s2_4band_128px.tif` (128×128 px, 4 bands).")
+
         st.markdown("### Upload Sentinel-2 GeoTIFF for Live Analysis")
 
         if not uploaded_files:
@@ -768,6 +827,7 @@ def main():
                 "**Ready for Upload**: Please upload a Sentinel-2 GeoTIFF file in the sidebar to begin analysis.  \n\n"
                 "• **Option 1 (Single File)**: A single multi-band GeoTIFF containing at least 4 bands (ordered as B02 Blue, B03 Green, B04 Red, B08 NIR).  \n"
                 "• **Option 2 (Multiple Files)**: Four individual Sentinel-2 band files (`*B02*.tif`, `*B03*.tif`, `*B04*.tif`, `*B08*.tif`).  \n"
+                "• **Option 3 (Presenter Demo)**: Enable **'Use Bundled Sample GeoTIFF'** in the sidebar to run the genuine live pipeline on a bundled Sentinel-2 raster.  \n"
                 "• **Validation Requirements**: Minimum dimension 64 × 64 pixels, valid projected/geographic CRS, ~10m GSD."
             )
             st.stop()
@@ -1052,6 +1112,8 @@ def main():
         tile_meta = receipt.get("tile_metadata", {})
         meta_col1, meta_col2, meta_col3, meta_col4 = st.columns(4)
         with meta_col1:
+            wf_label = "Live User Upload (Real-Time Inference)" if st.session_state.get("app_mode") == "Live Analysis" else "Demo Scene (Precomputed Offline Cache)"
+            st.markdown(f"**Workflow Mode**: `{wf_label}`")
             st.markdown(f"**Platform / Product**: `{tile_meta.get('platform', 'Not available')}` ({tile_meta.get('product_level', 'Not available')})")
             st.markdown(f"**MGRS Tile ID**: `{tile_meta.get('mgrs_tile', 'Not available')}`")
         with meta_col2:
