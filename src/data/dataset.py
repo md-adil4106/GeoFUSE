@@ -51,6 +51,7 @@ class SentinelSRDataset(Dataset):
         seed: int = 42,
         split_mode: str = "v2",
         buffer_pixels: int = 0,
+        augment: bool = False,
     ) -> None:
         super().__init__()
         assert split in ("train", "val"), f"Invalid split: {split}. Must be 'train' or 'val'."
@@ -58,6 +59,7 @@ class SentinelSRDataset(Dataset):
         self.split = split
         self.split_mode = split_mode
         self.buffer_pixels = buffer_pixels
+        self.augment = augment
         self.patch_size_hr = patch_size_hr
         self.downsample_factor = downsample_factor
         self.blur_kernel_size = blur_kernel_size
@@ -138,6 +140,22 @@ class SentinelSRDataset(Dataset):
         # Convert to PyTorch format (Channels, Height, Width)
         hr_tensor = torch.from_numpy(hr_patch).permute(2, 0, 1).contiguous().float()
         lr_tensor = torch.from_numpy(lr_patch).permute(2, 0, 1).contiguous().float()
+
+        # Synchronous geometric data augmentation for satellite nadir invariance
+        if self.split == "train" and self.augment:
+            # Random horizontal flip
+            if torch.rand(1).item() > 0.5:
+                lr_tensor = torch.flip(lr_tensor, dims=[2])
+                hr_tensor = torch.flip(hr_tensor, dims=[2])
+            # Random vertical flip
+            if torch.rand(1).item() > 0.5:
+                lr_tensor = torch.flip(lr_tensor, dims=[1])
+                hr_tensor = torch.flip(hr_tensor, dims=[1])
+            # Random 90-degree rotations (0, 90, 180, 270 deg)
+            k = int(torch.randint(0, 4, (1,)).item())
+            if k > 0:
+                lr_tensor = torch.rot90(lr_tensor, k=k, dims=[1, 2])
+                hr_tensor = torch.rot90(hr_tensor, k=k, dims=[1, 2])
 
         meta = {
             "y": record["y"],
