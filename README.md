@@ -139,23 +139,26 @@ To verify the real-world operational utility of super-resolved imagery, GeoFUSE 
 
 ---
 
-## Interactive Demonstration Dashboard (Phase 10)
+## Interactive GIS Inspection Dashboard
 
-GeoFUSE SentinelGuard includes an interactive Streamlit dashboard (`src/dashboard/app.py`) for live comparative inspection:
+GeoFUSE SentinelGuard provides a professional GIS and engineering monitoring dashboard (`src/dashboard/app.py`) built with Streamlit and styled with a dark scientific theme (`#0e1117` / `#151821` / `#4a90e2`):
 
-- **Side-by-Side Verification**: Simultaneous 4-column display of:
-  1. **Original Reference (10m)** [Pre-degradation Sentinel-2]
-  2. **Bicubic Baseline (2x)** [Standard interpolation]
-  3. **GeoFUSE SR (2x)** [Ensemble Mean Reconstruction]
-  4. **Trust / Risk Map Overlay** [RdYlGn colormap: Green = High Trust, Red = High Risk]
-- **Downstream Task Toggle**: Interactive inspection of building footprint contours, consensus masks, and trust stratification statistics.
-- **Evidence Breakdown Toggle**: Live inspection of individual evidence maps (disagreement, stability, $\Delta$NDVI, gradient error).
-- **Cached Inference**: Utilizes Streamlit resource caching to ensure rapid, responsive tile navigation without timeouts or redundant compute.
+- **Dual Operational Modes**:
+  1. **Demo Mode (Default, 100% Offline)**: Instant sub-10ms browsing across precomputed held-out geographic scenes (`outputs/demo_cache/`) with zero network access and zero live inference overhead.
+  2. **Live Analysis (User Upload)**: Ingest arbitrary multi-band Sentinel-2 GeoTIFFs (single 4-band or separate B02/B03/B04/B08 files) or quick-select the bundled presenter sample (`examples/sample_upload/sample_s2_4band_128px.tif`). Executes pre-flight raster validation, automatic patch tiling, live PyTorch ensemble super-resolution, perturbation testing, consistency checks, and reference-free receipt generation.
+- **5 Guided Workflow Tabs**:
+  - **1. Overview**: Composite reliability evidence score banner, primary reliability metrics, scene & model metadata provenance, and scientific limitations note.
+  - **2. Comparison**: Side-by-side synchronized view of Actual Model Input (20m), Bicubic Baseline (10m), GeoFUSE SR Neural Ensemble (10m), Clean Reference Target (or reference-free card for uploads), and Trust/Risk Overlay with 4x zoomed ROI crop tool and high-frequency edge difference map ($|\text{GeoFUSE} - \text{Bicubic}| \times 8$).
+  - **3. Evidence**: Compact horizontal progress bars of real computed metrics (Ensemble Disagreement $\sigma$, Perturbation Stability, Spectral $\Delta$-NDVI, Gradient Correlation $r$) and spatial anomaly heatmaps.
+  - **4. Downstream Impact**: Morphological building footprint extraction, contour overlays, and spatial consensus vs. discrepancy maps stratified across high-trust and low-trust zones.
+  - **5. Trust Receipt**: Machine-readable audit artifact with complete acquisition and processing metadata, downloadable as serialized JSON or standalone HTML summary card.
 
 ### Launching the Dashboard:
 ```bash
 streamlit run src/dashboard/app.py
 ```
+Access the application in your browser at `http://localhost:8501`.
+
 
 ---
 
@@ -229,7 +232,7 @@ python scripts/evaluate_downstream_task.py
 # 9. Generate auditable Trust Receipts
 python scripts/generate_trust_receipts.py
 
-# 10. Run automated PyTest test suite (57 tests)
+# 10. Run automated PyTest test suite (88 tests across 18 modules)
 pytest tests/ -v
 
 # 11. Launch interactive Streamlit dashboard
