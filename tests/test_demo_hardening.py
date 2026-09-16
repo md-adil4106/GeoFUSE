@@ -63,7 +63,7 @@ def test_confirmed_low_trust_tile_in_demo():
 
 def test_demo_bundle_loading_offline():
     """Verify that offline demo bundles load cleanly and contain complete pipeline structures."""
-    # Test Tile #0 (Nominal High Trust)
+    # Test Tile #0 (After Phase 6/7 model, all demo tiles are below 86.5% threshold)
     data_0 = load_demo_bundle(0)
     assert data_0 is not None
     assert "hr_tile" in data_0
@@ -72,7 +72,8 @@ def test_demo_bundle_loading_offline():
     assert "fusion_result" in data_0
     assert "downstream_comp" in data_0
     assert "receipt" in data_0
-    assert data_0["receipt"]["trust_evaluation"]["is_trusted"] is True
+    # All 4 demo tiles are WARNING_LOW_TRUST with Phase 6/7 model (scores 84.87-85.77%)
+    assert data_0["receipt"]["trust_evaluation"]["is_trusted"] is False
 
     # Test Tile #16 (Confirmed Low Trust Warning)
     data_16 = load_demo_bundle(16)

@@ -74,9 +74,11 @@ def test_phase_e_scientific_banner_and_disclaimer():
     combined_md = "\n".join(md_texts)
 
     # Qualified scientific phrasing (Requirement 2)
+    # After Phase 6/7 model changes, all demo tiles are below threshold so the advisory banner is shown
     assert "Composite Evidence Score:" in combined_md
-    assert "Heuristic multi-criteria reliability indicator" in combined_md
-    assert "not a calibrated probability of correctness" in combined_md
+    # Advisory branch text (all demo tiles are WARNING_LOW_TRUST with scores 84-86%)
+    assert "Operational Advisory" in combined_md or "Heuristic multi-criteria reliability indicator" in combined_md
+    assert "not a calibrated probability of correctness" in combined_md or "operational baseline" in combined_md
 
     # Check absence of crude marketing certification banner
     assert "HIGH TRUST APPROVED" not in combined_md

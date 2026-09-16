@@ -65,10 +65,14 @@ def precompute_demo_assets(output_dir: Optional[Path] = None) -> Dict[str, Any]:
         num_tiles - 1: "Complex Terrain Transition (Low Trust Warning)",
     }
 
-    # 3. Load ensemble models
-    checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
+    # 3. Load ensemble models (prioritizing locked Phase 13 final demo checkpoints)
+    final_dir = root / "checkpoints" / "final_demo_v1"
+    if (final_dir / "ensemble_member_0.pth").exists():
+        checkpoints_dir = final_dir
+    else:
+        checkpoints_dir = root / config.get("paths", {}).get("outputs_dir", "outputs") / "checkpoints"
     ckpt_paths = [checkpoints_dir / f"ensemble_member_{i}.pth" for i in range(3)]
-    print(f"Loading {len(ckpt_paths)} ensemble models onto {device}...")
+    print(f"Loading {len(ckpt_paths)} ensemble models from {checkpoints_dir} onto {device}...")
     models = load_ensemble_members(ckpt_paths, config=config, device=device)
 
     # 4. Parameters

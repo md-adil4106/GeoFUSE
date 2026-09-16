@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-09-14 08:36:16 UTC",
+  "generated_at": "2026-09-16 20:02:12 UTC",
   "threshold": 86.5,
   "tiles": [
     {
       "tile_idx": 0,
       "order_idx": 0,
       "description": "Central Settlement Cluster",
-      "trust_score_pct": 86.75,
-      "is_trusted": true,
-      "status": "NOMINAL_HIGH_TRUST",
+      "trust_score_pct": 85.77,
+      "is_trusted": false,
+      "status": "WARNING_LOW_TRUST",
       "bundle_file": "demo_tile_0.pkl",
       "receipt_file": "demo_tile_0_receipt.json"
     },
@@ -16,8 +16,8 @@
       "tile_idx": 8,
       "order_idx": 1,
       "description": "Agricultural & Rural Roads",
-      "trust_score_pct": 86.7,
-      "is_trusted": true,
+      "trust_score_pct": 84.87,
+      "is_trusted": false,
       "status": "WARNING_LOW_TRUST",
       "bundle_file": "demo_tile_8.pkl",
       "receipt_file": "demo_tile_8_receipt.json"
@@ -26,7 +26,7 @@
       "tile_idx": 16,
       "order_idx": 2,
       "description": "Rural River Corridor (Low Trust Warning)",
-      "trust_score_pct": 86.41,
+      "trust_score_pct": 84.97,
       "is_trusted": false,
       "status": "WARNING_LOW_TRUST",
       "bundle_file": "demo_tile_16.pkl",
@@ -36,7 +36,7 @@
       "tile_idx": 24,
       "order_idx": 3,
       "description": "Complex Terrain Transition (Low Trust Warning)",
-      "trust_score_pct": 86.02,
+      "trust_score_pct": 85.52,
       "is_trusted": false,
       "status": "WARNING_LOW_TRUST",
       "bundle_file": "demo_tile_24.pkl",

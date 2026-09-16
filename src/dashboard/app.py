@@ -1374,6 +1374,10 @@ def main():
 
     # In Upload mode, render Upload Queue first, then Evidence Toggles
     if imagery_source == "Upload GeoTIFF":
+        models, config, dev = load_cached_models()
+        if not torch.cuda.is_available() or (dev and dev.type == "cpu"):
+            st.sidebar.warning("⚠️ **CPU Fallback Active**: Compute device is CPU. Live inference is functional but running in degraded mode (~1-2s per patch).")
+
         st.sidebar.markdown(
             """
             <div class="sidebar-module-header">UPLOAD QUEUE</div>
@@ -1562,7 +1566,10 @@ def main():
             st.markdown(f"• **Extracted Patches**: `{total_tiles} total (indexed {len(tiles)})`")
             st.markdown(f"• **Active Patch**: `Patch #{selected_idx} (Y: {py}, X: {px})`")
             models, config, dev = load_cached_models()
-            st.markdown(f"• **Compute Device**: `{dev}`")
+            if dev and dev.type == "cpu":
+                st.markdown(f"• **Compute Device**: `CPU (Degraded Performance Fallback)`")
+            else:
+                st.markdown(f"• **Compute Device**: `{dev}`")
             if meta.get("bounds"):
                 b = meta["bounds"]
                 st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
