@@ -207,7 +207,65 @@ def generate_trust_receipt(
 
     # 5. Build Receipt
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    receipt_id = f"TR-{geo_meta.get('platform', 'S2')}-{geo_meta.get('mgrs_tile', 'TILE')}-T{tile_idx:02d}-{int(datetime.now(timezone.utc).timestamp())}"
+
+    is_upload = bool(geo_meta.get("is_upload", False))
+
+    platform_val = geo_meta.get("platform")
+    if not platform_val or platform_val in ("unavailable", "Unavailable"):
+        platform_val = "Not available" if is_upload else "Sentinel-2"
+
+    mgrs_val = geo_meta.get("mgrs_tile")
+    if not mgrs_val or mgrs_val in ("unavailable", "Unavailable"):
+        mgrs_val = "Not available" if is_upload else "AOI-CUSTOM"
+
+    product_val = geo_meta.get("product_level")
+    if not product_val or product_val in ("unavailable", "Unavailable"):
+        product_val = "Not available" if is_upload else "L2A"
+
+    acq_val = geo_meta.get("acquisition_datetime") or geo_meta.get("acquisition_date")
+    if not acq_val or acq_val in ("unavailable", "Unavailable", "unavailable (not specified in header)"):
+        acq_val = "Not available"
+
+    crs_val = geo_meta.get("source_crs") or geo_meta.get("crs")
+    if not crs_val or crs_val in ("unavailable", "Unavailable"):
+        crs_val = "Not available"
+
+    res_val = geo_meta.get("spatial_resolution_meters")
+    if res_val is None or res_val in ("unavailable", "Unavailable"):
+        if isinstance(geo_meta.get("resolution"), (list, tuple)) and geo_meta["resolution"][0] > 0:
+            res_val = float(geo_meta["resolution"][0])
+        else:
+            res_val = "Not available" if is_upload else 10.0
+
+    bounds_val = geo_meta.get("geospatial_bounds") or geo_meta.get("bounds")
+    if not bounds_val or bounds_val in ("unavailable", "Unavailable"):
+        bounds_val = "Not available"
+
+    cloud_val = geo_meta.get("cloud_cover_percentage")
+    if not cloud_val or cloud_val in ("unavailable", "Unavailable"):
+        cloud_val = "Not available" if is_upload else "unavailable"
+
+    sun_el_val = geo_meta.get("sun_elevation_angle_deg")
+    if not sun_el_val or sun_el_val in ("unavailable", "Unavailable"):
+        sun_el_val = "Not available" if is_upload else "unavailable"
+
+    sun_az_val = geo_meta.get("sun_azimuth_angle_deg")
+    if not sun_az_val or sun_az_val in ("unavailable", "Unavailable"):
+        sun_az_val = "Not available" if is_upload else "unavailable"
+
+    orbit_val = geo_meta.get("satellite_orbit_number")
+    if not orbit_val or orbit_val in ("unavailable", "Unavailable"):
+        orbit_val = "Not available" if is_upload else "unavailable"
+
+    scale = model_provenance["scale_factor"]
+    if isinstance(res_val, (int, float)):
+        recon_res = round(float(res_val) / scale, 2)
+    else:
+        recon_res = "Not available"
+
+    p_id = platform_val if platform_val != "Not available" else "UPLOAD"
+    m_id = mgrs_val if mgrs_val != "Not available" else f"PATCH{tile_idx:02d}"
+    receipt_id = f"TR-{p_id}-{m_id}-T{tile_idx:02d}-{int(datetime.now(timezone.utc).timestamp())}"
 
     receipt = {
         "$schema": "https://geofuse.sentinelguard/schemas/trust-receipt-v1.json",
@@ -233,32 +291,19 @@ def generate_trust_receipt(
         },
         "tile_metadata": {
             "tile_index": tile_idx,
-            "platform": geo_meta.get("platform", "Sentinel-2"),
-            "mgrs_tile": geo_meta.get("mgrs_tile", "AOI-CUSTOM"),
-            "product_level": geo_meta.get("product_level", "L2A"),
-            "acquisition_datetime": geo_meta.get("acquisition_datetime") or geo_meta.get("acquisition_date", "unavailable"),
-            "source_crs": geo_meta.get("source_crs") or geo_meta.get("crs", "unavailable"),
-            "spatial_resolution_meters": (
-                geo_meta.get("spatial_resolution_meters")
-                or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0)
-            ),
-            "super_resolution_scale_factor": model_provenance["scale_factor"],
-            "reconstructed_resolution_meters": (
-                round(
-                    float(
-                        geo_meta.get("spatial_resolution_meters")
-                        or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0)
-                    ) / model_provenance["scale_factor"],
-                    2,
-                )
-                if isinstance(geo_meta.get("spatial_resolution_meters") or (geo_meta.get("resolution")[0] if isinstance(geo_meta.get("resolution"), (list, tuple)) else 10.0), (int, float))
-                else (10.0 / model_provenance["scale_factor"])
-            ),
-            "geospatial_bounds": geo_meta.get("geospatial_bounds") or geo_meta.get("bounds", "unavailable"),
-            "cloud_cover_percentage": geo_meta.get("cloud_cover_percentage", "unavailable"),
-            "sun_elevation_angle_deg": geo_meta.get("sun_elevation_angle_deg", "unavailable"),
-            "sun_azimuth_angle_deg": geo_meta.get("sun_azimuth_angle_deg", "unavailable"),
-            "satellite_orbit_number": geo_meta.get("satellite_orbit_number", "unavailable"),
+            "platform": platform_val,
+            "mgrs_tile": mgrs_val,
+            "product_level": product_val,
+            "acquisition_datetime": acq_val,
+            "source_crs": crs_val,
+            "spatial_resolution_meters": res_val,
+            "super_resolution_scale_factor": scale,
+            "reconstructed_resolution_meters": recon_res,
+            "geospatial_bounds": bounds_val,
+            "cloud_cover_percentage": cloud_val,
+            "sun_elevation_angle_deg": sun_el_val,
+            "sun_azimuth_angle_deg": sun_az_val,
+            "satellite_orbit_number": orbit_val,
         },
         "model_provenance": model_provenance,
         "evidence_metrics": {
@@ -305,7 +350,11 @@ def generate_trust_receipt(
                 "high_trust_region_iou": comp["high_trust_bic_sr"]["iou"],
                 "low_trust_region_iou": comp["low_trust_bic_sr"]["iou"],
                 "high_trust_area_pct": comp["high_trust_area_pct"],
-                "relative_reference_hr_iou": comp["reference_comparison"]["sr_vs_ref_iou"] if comp.get("reference_comparison") else "unavailable",
+                "relative_reference_hr_iou": (
+                    comp["reference_comparison"]["sr_vs_ref_iou"]
+                    if (comp.get("reference_comparison") and isinstance(comp["reference_comparison"], dict) and "sr_vs_ref_iou" in comp["reference_comparison"])
+                    else ("Not available" if is_upload else "unavailable")
+                ),
             },
         },
         "trust_evaluation": {
@@ -356,6 +405,15 @@ def render_trust_receipt_html(receipt: Dict[str, Any]) -> str:
     else:
         warnings_html = "<div style='margin-top:12px; padding:8px 12px; background:#18281e; border-left:4px solid #10b981; border-radius:4px;'><p style='color:#6ee7b7; margin:0; font-size:13px;'>✅ All multi-criteria verification metrics satisfied.</p></div>"
 
+    res_raw = receipt["tile_metadata"].get("spatial_resolution_meters")
+    recon_raw = receipt["tile_metadata"].get("reconstructed_resolution_meters")
+    if isinstance(res_raw, (int, float)) and isinstance(recon_raw, (int, float)):
+        res_display = f"{res_raw}m &rarr; <strong>{recon_raw}m</strong> (2x SR)"
+    elif isinstance(res_raw, (int, float)):
+        res_display = f"{res_raw}m"
+    else:
+        res_display = f"<em>{res_raw or 'Not available'}</em>"
+
     html = f"""
     <div style="background-color:#1e1e24; border:1px solid #333; border-radius:8px; padding:18px; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#eee; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:14px;">
@@ -383,7 +441,7 @@ def render_trust_receipt_html(receipt: Dict[str, Any]) -> str:
                     <tr><td style="color:#888; padding:3px 0;">MGRS Tile:</td><td><strong>{receipt['tile_metadata']['mgrs_tile']}</strong></td></tr>
                     <tr><td style="color:#888; padding:3px 0;">Acquisition Date:</td><td>{receipt['tile_metadata']['acquisition_datetime']}</td></tr>
                     <tr><td style="color:#888; padding:3px 0;">Source CRS:</td><td><code>{receipt['tile_metadata']['source_crs']}</code></td></tr>
-                    <tr><td style="color:#888; padding:3px 0;">Resolution:</td><td>{receipt['tile_metadata']['spatial_resolution_meters']}m &rarr; <strong>{receipt['tile_metadata']['reconstructed_resolution_meters']}m</strong> (2x SR)</td></tr>
+                    <tr><td style="color:#888; padding:3px 0;">Resolution:</td><td>{res_display}</td></tr>
                     <tr><td style="color:#888; padding:3px 0;">Cloud Cover:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['cloud_cover_percentage']}</em></td></tr>
                     <tr><td style="color:#888; padding:3px 0;">Sun Elevation:</td><td style="color:#aaa;"><em>{receipt['tile_metadata']['sun_elevation_angle_deg']}</em></td></tr>
                 </table>

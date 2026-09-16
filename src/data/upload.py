@@ -56,7 +56,7 @@ def _get_file_bytes_and_name(file_obj: Any) -> Tuple[bytes, str]:
 def _extract_acquisition_date(tags: Dict[str, Any], filename: str) -> str:
     """Extract acquisition date from GeoTIFF tags or Sentinel-2 filename tokens."""
     # 1. Inspect GeoTIFF tags
-    for date_key in ("DATETIME", "TIFFTAG_DATETIME", "ACQUISITION_DATETIME", "acquisition_time"):
+    for date_key in ("DATETIME", "TIFFTAG_DATETIME", "ACQUISITION_DATETIME", "acquisition_time", "SENSING_TIME"):
         if date_key in tags and tags[date_key]:
             return str(tags[date_key])
 
@@ -77,7 +77,75 @@ def _extract_acquisition_date(tags: Dict[str, Any], filename: str) -> str:
             except Exception:
                 pass
 
-    return "unavailable (not specified in header)"
+    return "Not available"
+
+
+def _extract_platform(tags: Dict[str, Any], filename: str) -> str:
+    """Extract satellite platform from GeoTIFF tags or filename tokens."""
+    for k in ("SPACECRAFT_NAME", "PLATFORM", "MISSION_ID", "satellite"):
+        if k in tags and tags[k]:
+            val = str(tags[k]).strip()
+            if "S2A" in val.upper() or "SENTINEL-2A" in val.upper():
+                return "Sentinel-2A"
+            if "S2B" in val.upper() or "SENTINEL-2B" in val.upper():
+                return "Sentinel-2B"
+            return val
+
+    parts = Path(filename).stem.split("_")
+    if parts:
+        p0 = parts[0].upper()
+        if p0 == "S2A":
+            return "Sentinel-2A"
+        elif p0 == "S2B":
+            return "Sentinel-2B"
+        elif "SENTINEL" in p0:
+            return "Sentinel-2"
+    return "Not available"
+
+
+def _extract_mgrs_tile(tags: Dict[str, Any], filename: str) -> str:
+    """Extract MGRS tile ID from GeoTIFF tags or filename tokens."""
+    for k in ("MGRS_TILE", "TILE_ID", "tile_id"):
+        if k in tags and tags[k]:
+            return str(tags[k]).strip().lstrip("T")
+
+    parts = Path(filename).stem.split("_")
+    for part in parts:
+        part_up = part.upper()
+        if (
+            len(part_up) == 6
+            and part_up.startswith("T")
+            and part_up[1:3].isdigit()
+            and part_up[3:].isalpha()
+        ):
+            return part_up.lstrip("T")
+        elif len(part_up) == 5 and part_up[:2].isdigit() and part_up[2:].isalpha():
+            return part_up
+    return "Not available"
+
+
+def _extract_product_level(tags: Dict[str, Any], filename: str) -> str:
+    """Extract product processing level from GeoTIFF tags or filename tokens."""
+    for k in ("PROCESSING_LEVEL", "PRODUCT_LEVEL", "processing_level"):
+        if k in tags and tags[k]:
+            return str(tags[k]).strip()
+
+    parts = Path(filename).stem.split("_")
+    for part in parts:
+        p = part.upper()
+        if p in ("L2A", "MSIL2A"):
+            return "L2A"
+        elif p in ("L1C", "MSIL1C"):
+            return "L1C"
+    return "Not available"
+
+
+def _extract_tag_value(tags: Dict[str, Any], candidate_keys: Tuple[str, ...]) -> str:
+    """Safely extract metadata tag value from candidate keys or return 'Not available'."""
+    for k in candidate_keys:
+        if k in tags and tags[k] is not None and str(tags[k]).strip() != "":
+            return str(tags[k]).strip()
+    return "Not available"
 
 
 def _identify_band_from_filename(filename: str) -> Optional[str]:
@@ -391,11 +459,28 @@ def validate_uploaded_raster(
     # -------------------------------------------------------------------------
     all_passed = all(c["passed"] for c in checks)
 
-    # Acquisition date extraction
-    acq_date = _extract_acquisition_date(ref_ds.tags(), file_info[0]["name"])
+    # Acquisition metadata extraction
+    ref_tags = ref_ds.tags()
+    primary_name = file_info[0]["name"]
+    acq_date = _extract_acquisition_date(ref_tags, primary_name)
+    platform = _extract_platform(ref_tags, primary_name)
+    mgrs_tile = _extract_mgrs_tile(ref_tags, primary_name)
+    product_level = _extract_product_level(ref_tags, primary_name)
+    cloud_cover = _extract_tag_value(
+        ref_tags, ("CLOUD_COVERAGE_ASSESSMENT", "CLOUDY_PIXEL_PERCENTAGE", "cloud_cover")
+    )
+    sun_elevation = _extract_tag_value(
+        ref_tags, ("MEAN_SUN_ELEVATION_ANGLE", "SUN_ELEVATION", "sun_elevation")
+    )
+    sun_azimuth = _extract_tag_value(
+        ref_tags, ("MEAN_SUN_AZIMUTH_ANGLE", "SUN_AZIMUTH", "sun_azimuth")
+    )
+    orbit_number = _extract_tag_value(
+        ref_tags, ("SENSING_ORBIT_NUMBER", "ORBIT_NUMBER", "RELATIVE_ORBIT_NUMBER", "orbit")
+    )
 
     # Bounds
-    bounds_dict = {}
+    bounds_dict = None
     if ref_ds.bounds:
         bounds_dict = {
             "left": round(float(ref_ds.bounds.left), 2),
@@ -404,19 +489,33 @@ def validate_uploaded_raster(
             "top": round(float(ref_ds.bounds.top), 2),
         }
 
+    spatial_res = float(abs(round(res_x, 2))) if res_x and res_x > 0 else "Not available"
+
     metadata = {
-        "primary_filename": file_info[0]["name"],
+        "is_upload": True,
+        "primary_filename": primary_name,
         "all_filenames": [f["name"] for f in file_info],
         "height": height,
         "width": width,
         "spatial_shape": (height, width),
         "band_count": len(TARGET_BANDS) if bands_check_passed else ref_ds.count,
         "bands": [BAND_NAMES[b] for b in TARGET_BANDS] if bands_check_passed else [],
-        "crs": str(crs) if crs else "unavailable",
+        "crs": str(crs) if crs else "Not available",
+        "source_crs": str(crs) if crs else "Not available",
         "resolution": (res_x, res_y),
+        "spatial_resolution_meters": spatial_res,
         "dtype": dtype_str,
         "acquisition_date": acq_date,
-        "bounds": bounds_dict,
+        "acquisition_datetime": acq_date,
+        "platform": platform,
+        "mgrs_tile": mgrs_tile,
+        "product_level": product_level,
+        "cloud_cover_percentage": cloud_cover,
+        "sun_elevation_angle_deg": sun_elevation,
+        "sun_azimuth_angle_deg": sun_azimuth,
+        "satellite_orbit_number": orbit_number,
+        "bounds": bounds_dict if bounds_dict else "Not available",
+        "geospatial_bounds": bounds_dict if bounds_dict else "Not available",
         "data_range": (data_min, data_max),
         "needs_reflectance_scaling": needs_scaling,
         "mode": "single_file" if is_single_file else "multi_file",

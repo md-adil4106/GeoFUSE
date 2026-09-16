@@ -1106,6 +1106,14 @@ def main():
                     "Evaluates consistency between Bicubic and SR reconstructions across High-Trust vs. Low-Trust geographic zones."
                 )
 
+                if not has_reference:
+                    st.info(
+                        "ℹ️ **Reference Mask Unavailable for Uploaded Imagery**: "
+                        "Because arbitrary user-uploaded imagery lacks independent high-resolution ground truth masks, "
+                        "this downstream evaluation measures empirical consensus and morphological boundary discrepancy "
+                        "directly between the standard Bicubic baseline and the GeoFUSE SR ensemble, partitioned across High-Trust vs. Low-Trust zones."
+                    )
+
                 foot_bic = data["foot_bic"]
                 foot_sr = data["foot_sr"]
                 comp = data["downstream_comp"]
@@ -1146,7 +1154,7 @@ def main():
                 if ref_comp and "sr_vs_ref_iou" in ref_comp:
                     stat_col4.metric("Relative Ref HR IoU", f"{ref_comp['sr_vs_ref_iou']:.4f}")
                 else:
-                    stat_col4.metric("Relative Ref HR IoU", "N/A (No GT)")
+                    stat_col4.metric("Relative Ref HR IoU", "Not available (No GT)")
             except Exception as e:
                 st.warning(f"Could not render downstream task evaluation: {e}")
 
@@ -1180,12 +1188,12 @@ def main():
             receipt_html = render_trust_receipt_html(receipt)
             st.markdown(receipt_html, unsafe_allow_html=True)
 
-            # JSON Download and Explorer
-            st.markdown("#### 💾 Export & Raw JSON Record")
+            # JSON & HTML Download and Explorer
+            st.markdown("#### 💾 Export Auditable Trust Receipt Record")
             receipt_json_str = json.dumps(receipt, indent=2, ensure_ascii=False)
 
-            col_dl, col_exp = st.columns([1, 4])
-            with col_dl:
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
                 receipt_filename = (
                     f"trust_receipt_upload_patch_{selected_idx}.json"
                     if st.session_state.get("app_mode") == "Live Analysis"
@@ -1196,6 +1204,20 @@ def main():
                     data=receipt_json_str,
                     file_name=receipt_filename,
                     mime="application/json",
+                    use_container_width=True,
+                )
+
+            with col_dl2:
+                receipt_html_filename = (
+                    f"trust_receipt_upload_patch_{selected_idx}.html"
+                    if st.session_state.get("app_mode") == "Live Analysis"
+                    else f"trust_receipt_tile_{selected_idx}.html"
+                )
+                st.download_button(
+                    label="📄 Download Summary Card (HTML)",
+                    data=receipt_html,
+                    file_name=receipt_html_filename,
+                    mime="text/html",
                     use_container_width=True,
                 )
 
