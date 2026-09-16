@@ -585,157 +585,399 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    # Inject Scientific GIS / Monitoring Tool Custom CSS
+    # Inject Telemetry Console Custom CSS (F1 / Engineering Telemetry Dashboard aesthetic)
     st.markdown(
         """
         <style>
         :root {
-            --bg-main: #0e1117;
-            --bg-surface: #151821;
-            --bg-surface-elevated: #1b202c;
-            --border-subtle: #262c38;
-            --border-active: #3b82f6;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent-blue: #4a90e2;
-            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            --bg-main: #080b11;
+            --bg-surface: #0c1018;
+            --bg-surface-elevated: #111724;
+            --border-subtle: #1a2332;
+            --border-dim: #141b27;
+            --border-active: #00e5ff;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            /* One unified telemetry cyan accent */
+            --telemetry-accent: #00e5ff;
+            --telemetry-accent-blue: #38bdf8;
+            --telemetry-accent-muted: rgba(0, 229, 255, 0.10);
+            --telemetry-accent-glow: rgba(0, 229, 255, 0.25);
+            /* Typography stacks */
+            --font-mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* Typography Normalization */
+        /* Typography Normalization: Clean sans-serif for headings/prose */
         html, body, [class*="css"] {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #e6edf3;
+            font-family: var(--font-sans);
+            color: var(--text-primary);
         }
 
         h1, h2, h3, h4 {
+            font-family: var(--font-sans) !important;
             font-weight: 600 !important;
             letter-spacing: -0.015em;
+            color: #f1f5f9 !important;
         }
         h1 { font-size: 1.45rem !important; margin-bottom: 0.2rem !important; }
         h2 { font-size: 1.18rem !important; margin-bottom: 0.3rem !important; }
-        h3 { font-size: 1.02rem !important; }
-        h4 { font-size: 0.90rem !important; }
+        h3 { font-size: 1.00rem !important; }
+        h4 { font-size: 0.88rem !important; }
 
         .stCaption, .sci-caption {
-            font-size: 0.80rem !important;
-            color: #8b949e !important;
+            font-family: var(--font-sans) !important;
+            font-size: 0.78rem !important;
+            color: var(--text-muted) !important;
             line-height: 1.45 !important;
         }
 
-        /* Restrained Scientific Evidence Banner */
-        .sci-evidence-banner {
-            background-color: #121620;
-            border: 1px solid #283042;
-            border-left: 4px solid #4a90e2;
-            border-radius: 3px;
-            padding: 11px 16px;
-            margin-top: 4px;
-            margin-bottom: 16px;
-        }
-        .sci-evidence-banner.advisory {
-            border-left: 4px solid #eab308;
-            background-color: #1a1712;
-            border-color: #3b3221;
-        }
-        .sci-evidence-title {
-            font-size: 0.92rem;
-            font-weight: 600;
-            color: #f0f6fc;
-            margin-bottom: 3px;
-        }
-        .sci-evidence-desc {
-            font-size: 0.81rem;
-            color: #8b949e;
-            line-height: 1.42;
+        /* Inline Code & Monospace Badges */
+        code {
+            font-family: var(--font-mono) !important;
+            background-color: #0d121c !important;
+            color: var(--telemetry-accent-blue) !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 1px 5px !important;
+            font-size: 0.78rem !important;
         }
 
-        /* Scientific Status Indicator */
+        /* Tab Bar: Monospace Uppercase Readout with Telemetry Cyan Underline */
+        div[data-baseweb="tab-highlight"] {
+            background-color: var(--telemetry-accent) !important;
+            height: 2px !important;
+        }
+        div[data-baseweb="tab-border"] {
+            background-color: var(--border-subtle) !important;
+        }
+        button[data-baseweb="tab"] {
+            font-family: var(--font-mono) !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: var(--text-muted) !important;
+            padding: 8px 16px !important;
+            border: none !important;
+            background: transparent !important;
+            transition: color 0.15s ease !important;
+        }
+        button[data-baseweb="tab"]:hover {
+            color: var(--text-secondary) !important;
+        }
+        button[data-baseweb="tab"][aria-selected="true"] {
+            color: var(--telemetry-accent) !important;
+            font-weight: 600 !important;
+        }
+
+        /* Telemetry Metric Readout Tiles */
+        [data-testid="stMetric"] {
+            background-color: var(--bg-surface) !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 10px 14px !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-family: var(--font-mono) !important;
+            font-size: 0.67rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            color: var(--text-muted) !important;
+            font-weight: 500 !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-family: var(--font-mono) !important;
+            font-size: 1.35rem !important;
+            font-weight: 700 !important;
+            color: var(--telemetry-accent) !important;
+            letter-spacing: -0.02em !important;
+        }
+
+        /* Action Buttons: F1 Telemetry Console Styling */
+        button[kind="primary"], div[data-testid="stButton"] button[kind="primary"] {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+            border: 1px solid #38bdf8 !important;
+            border-radius: 2px !important;
+            font-family: var(--font-mono) !important;
+            font-weight: 600 !important;
+            font-size: 0.82rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            padding: 9px 18px !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+        button[kind="primary"]:hover, div[data-testid="stButton"] button[kind="primary"]:hover {
+            background-color: #0369a1 !important;
+            border-color: var(--telemetry-accent) !important;
+            box-shadow: 0 0 12px var(--telemetry-accent-glow) !important;
+        }
+        button[kind="secondary"], div[data-testid="stButton"] button[kind="secondary"] {
+            background-color: var(--bg-surface) !important;
+            color: var(--text-secondary) !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            font-family: var(--font-mono) !important;
+            font-size: 0.78rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.06em !important;
+            padding: 9px 18px !important;
+        }
+        button[kind="secondary"]:hover, div[data-testid="stButton"] button[kind="secondary"]:hover {
+            border-color: #38bdf8 !important;
+            color: #f1f5f9 !important;
+        }
+
+        /* Restrained Telemetry Evidence Banner with CSS Corner Brackets (┌ ┐ └ ┘) */
+        .sci-evidence-banner {
+            position: relative;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 0px;
+            padding: 14px 18px;
+            margin-top: 4px;
+            margin-bottom: 16px;
+            background-image: 
+                linear-gradient(to right, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to bottom, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to left, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to bottom, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to right, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to top, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to left, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to top, var(--telemetry-accent) 8px, transparent 8px);
+            background-position: 
+                top left, top left,
+                top right, top right,
+                bottom left, bottom left,
+                bottom right, bottom right;
+            background-size: 
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px;
+            background-repeat: no-repeat;
+        }
+        .sci-evidence-banner.advisory {
+            background-image: 
+                linear-gradient(to right, #f59e0b 8px, transparent 8px),
+                linear-gradient(to bottom, #f59e0b 8px, transparent 8px),
+                linear-gradient(to left, #f59e0b 8px, transparent 8px),
+                linear-gradient(to bottom, #f59e0b 8px, transparent 8px),
+                linear-gradient(to right, #f59e0b 8px, transparent 8px),
+                linear-gradient(to top, #f59e0b 8px, transparent 8px),
+                linear-gradient(to left, #f59e0b 8px, transparent 8px),
+                linear-gradient(to top, #f59e0b 8px, transparent 8px);
+        }
+        .sci-evidence-title {
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--telemetry-accent);
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+        .sci-evidence-banner.advisory .sci-evidence-title {
+            color: #f59e0b;
+        }
+        .sci-evidence-desc {
+            font-family: var(--font-sans);
+            font-size: 0.80rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        /* Quick-Glance Telemetry Score Card with Corner Brackets (┌ ┐ └ ┘) */
+        .telemetry-score-card {
+            position: relative;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 0px;
+            padding: 16px;
+            text-align: center;
+            background-image: 
+                linear-gradient(to right, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to bottom, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to left, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to bottom, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to right, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to top, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to left, var(--telemetry-accent) 8px, transparent 8px),
+                linear-gradient(to top, var(--telemetry-accent) 8px, transparent 8px);
+            background-position: 
+                top left, top left,
+                top right, top right,
+                bottom left, bottom left,
+                bottom right, bottom right;
+            background-size: 
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px,
+                8px 2px, 2px 8px;
+            background-repeat: no-repeat;
+        }
+        .telemetry-score-card .score-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: var(--font-mono);
+        }
+        .telemetry-score-card .score-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: var(--telemetry-accent);
+            margin: 4px 0;
+            letter-spacing: -0.02em;
+        }
+        .telemetry-score-card .score-status-tag {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--telemetry-accent-blue);
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            padding: 2px 8px;
+            border-radius: 2px;
+        }
+
+        /* System Telemetry Status Indicator */
         .sci-status-indicator {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            border-radius: 3px;
+            gap: 8px;
+            border-radius: 2px;
             padding: 6px 12px;
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             font-family: var(--font-mono);
-            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
         }
-        .sci-status-indicator.demo {
-            background-color: #101626;
-            border: 1px solid #1e3a8a;
-            color: #93c5fd;
+        .sci-status-indicator .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
         }
-        .sci-status-indicator.live {
-            background-color: #241a10;
-            border: 1px solid #78350f;
-            color: #fcd34d;
+        .sci-status-indicator.demo .status-dot {
+            background-color: var(--telemetry-accent);
+            box-shadow: 0 0 6px var(--telemetry-accent);
+        }
+        .sci-status-indicator.live .status-dot {
+            background-color: #10b981;
+            box-shadow: 0 0 6px #10b981;
         }
 
-        /* Muted Monospace Image Labels */
-        .sci-image-label {
-            font-size: 0.75rem;
+        /* Sidebar Status Readout */
+        .sci-sidebar-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 2px;
+            padding: 8px 12px;
             font-family: var(--font-mono);
-            color: #8b949e;
+            font-size: 0.70rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .sci-sidebar-status .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .sci-sidebar-status.demo .status-dot {
+            background-color: var(--telemetry-accent);
+            box-shadow: 0 0 6px var(--telemetry-accent);
+        }
+        .sci-sidebar-status.live .status-dot {
+            background-color: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        /* Image Display & Muted Monospace Labels */
+        div[data-testid="stImage"] img {
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+        }
+        .sci-image-label {
+            font-size: 0.70rem;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             margin-top: 4px;
             margin-bottom: 6px;
             line-height: 1.35;
         }
 
-        /* Compact Evidence Horizontal Progress Bar */
+        /* Compact Horizontal Evidence Progress Bars */
         .sci-bar-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
-            font-size: 0.82rem;
+            font-size: 0.80rem;
         }
         .sci-bar-label {
-            color: #c9d1d9;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
             font-weight: 500;
         }
         .sci-bar-val {
             font-family: var(--font-mono);
-            color: #8b949e;
-            font-size: 0.78rem;
+            color: var(--telemetry-accent);
+            font-size: 0.75rem;
         }
         .sci-bar-container {
-            background-color: #161a24;
-            border: 1px solid #252d3d;
-            border-radius: 2px;
-            height: 7px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 1px;
+            height: 6px;
             width: 100%;
             margin-bottom: 12px;
             overflow: hidden;
         }
         .sci-bar-fill {
             height: 100%;
-            background-color: #4a90e2;
+            background-color: var(--telemetry-accent);
             border-radius: 1px;
         }
 
-        /* Legend Box */
+        /* Legend and Disclaimer Panels */
         .sci-legend-box {
-            background-color: #12151d;
-            border: 1px solid #222733;
-            border-radius: 3px;
-            padding: 9px 13px;
-            margin-top: 6px;
-            margin-bottom: 12px;
-            font-size: 0.79rem;
-            color: #8b949e;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 2px;
+            padding: 12px 16px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
             line-height: 1.45;
         }
 
         /* Unavailable Reference Panel */
         .sci-unavailable-card {
-            background-color: #12151d;
-            border: 1px dashed #282f3f;
-            border-radius: 3px;
+            background-color: var(--bg-surface);
+            border: 1px dashed var(--border-subtle);
+            border-radius: 2px;
             padding: 30px 10px;
             text-align: center;
-            color: #8b949e;
-            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-size: 0.80rem;
+            font-family: var(--font-mono);
             min-height: 155px;
             display: flex;
             flex-direction: column;
@@ -745,11 +987,30 @@ def main():
             margin-bottom: 4px;
         }
 
-        /* Tab Bar Clean Styling */
-        button[data-baseweb="tab"] {
-            font-size: 0.86rem !important;
-            font-weight: 500 !important;
-            padding: 8px 16px !important;
+        /* Streamlit Native Alert Boxes Override */
+        div[data-testid="stAlert"] {
+            background-color: var(--bg-surface) !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            padding: 10px 14px !important;
+        }
+        div[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p {
+            font-size: 0.80rem !important;
+            color: var(--text-secondary) !important;
+        }
+
+        /* Form Controls */
+        div[data-baseweb="select"] > div {
+            background-color: var(--bg-surface) !important;
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 2px !important;
+            font-family: var(--font-mono) !important;
+            font-size: 0.78rem !important;
+        }
+        div[data-testid="stFileUploader"] section {
+            background-color: var(--bg-surface) !important;
+            border: 1px dashed var(--border-subtle) !important;
+            border-radius: 2px !important;
         }
         </style>
         """,
@@ -760,7 +1021,7 @@ def main():
     if "app_mode" not in st.session_state:
         st.session_state["app_mode"] = "Demo Mode"
 
-    # Header with restrained scientific layout
+    # Header with restrained telemetry console layout
     header_col1, header_col2 = st.columns([3, 1])
     with header_col1:
         st.title("GeoFUSE SentinelGuard")
@@ -770,7 +1031,7 @@ def main():
             st.markdown(
                 """
                 <div class="sci-status-indicator live">
-                    <span style="color: #f59e0b;">●</span> Mode: Live User Upload (Real-Time Inference)
+                    <span class="status-dot"></span> Mode: Live User Upload (Real-Time Inference)
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -779,7 +1040,7 @@ def main():
             st.markdown(
                 """
                 <div class="sci-status-indicator demo">
-                    <span style="color: #38bdf8;">●</span> Mode: Demo Scene (Offline Cache)
+                    <span class="status-dot"></span> Mode: Demo Scene (Offline Cache)
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1145,14 +1406,14 @@ def main():
                 st.image(sr_rgb, caption="GeoFUSE SR (10m sharp)", use_container_width=True)
         with res_col2:
             status_text = "HIGH TRUST" if is_trusted else "OPERATIONAL ADVISORY"
-            status_color = "#388bfd" if is_trusted else "#d29922"
+            status_color = "#00e5ff" if is_trusted else "#f59e0b"
             st.markdown(
                 f"""
-                <div style="background: #151821; border: 1px solid #262c38; border-radius: 6px; padding: 14px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; font-family: monospace;">Composite Test Score</div>
-                    <div style="font-size: 2.2rem; font-weight: 700; color: {status_color}; font-family: monospace; margin: 4px 0;">{score_pct:.2f} <span style="font-size: 0.9rem; color: #8b949e;">/ 100</span></div>
-                    <div style="display: inline-block; font-size: 0.75rem; font-family: monospace; color: {status_color}; border: 1px solid {status_color}; padding: 2px 8px; border-radius: 3px;">{status_text}</div>
-                    <div style="font-size: 0.75rem; color: #8b949e; margin-top: 8px;">Reconstructed at 2x resolution (10m GSD) from 20m input. Explore tabs below for full multi-criteria verification.</div>
+                <div class="telemetry-score-card">
+                    <div class="score-label">Composite Test Score</div>
+                    <div class="score-number">{score_pct:.2f} <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">/ 100</span></div>
+                    <div class="score-status-tag" style="color: {status_color}; border-color: {status_color};">{status_text}</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 10px; line-height: 1.4;">Reconstructed at 2x resolution (10m GSD) from 20m input. Explore tabs below for full multi-criteria verification.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
