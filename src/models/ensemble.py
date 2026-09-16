@@ -45,10 +45,34 @@ def load_ensemble_members(
         if not path.exists():
             raise FileNotFoundError(f"Ensemble checkpoint not found at: {path.resolve()}")
 
-        model = build_model(config).to(device)
         ckpt = torch.load(path, map_location=device, weights_only=False)
-
         state_dict = ckpt.get("model_state_dict", ckpt)
+
+        # Dynamic architecture resolution from checkpoint metadata or state_dict
+        if isinstance(ckpt, dict) and "num_blocks" in ckpt:
+            num_blocks = int(ckpt["num_blocks"])
+            num_features = int(ckpt.get("num_features", 48))
+            model = ResidualSRNet(
+                in_channels=4,
+                out_channels=4,
+                num_features=num_features,
+                num_blocks=num_blocks,
+                scale_factor=2,
+            ).to(device)
+        elif isinstance(state_dict, dict) and any(k.startswith("body.") for k in state_dict.keys()):
+            block_indices = [int(k.split(".")[1]) for k in state_dict.keys() if k.startswith("body.")]
+            num_blocks = max(block_indices) + 1 if block_indices else 4
+            num_features = state_dict["head.weight"].shape[0] if "head.weight" in state_dict else 48
+            model = ResidualSRNet(
+                in_channels=4,
+                out_channels=4,
+                num_features=num_features,
+                num_blocks=num_blocks,
+                scale_factor=2,
+            ).to(device)
+        else:
+            model = build_model(config).to(device)
+
         model.load_state_dict(state_dict)
         model.eval()
         models.append(model)
@@ -85,10 +109,14 @@ def predict_ensemble(
     # Convert NumPy (H, W, C) to Tensor (1, C, H, W)
     if isinstance(lr_input, np.ndarray):
         if lr_input.ndim == 3:
-            # (H, W, C) -> (1, C, H, W)
-            tensor_input = (
-                torch.from_numpy(lr_input).permute(2, 0, 1).unsqueeze(0).float().to(device)
-            )
+            if lr_input.shape[0] <= 4 and lr_input.shape[2] > 4:
+                # (C, H, W) -> (1, C, H, W)
+                tensor_input = torch.from_numpy(lr_input).unsqueeze(0).float().to(device)
+            else:
+                # (H, W, C) -> (1, C, H, W)
+                tensor_input = (
+                    torch.from_numpy(lr_input).permute(2, 0, 1).unsqueeze(0).float().to(device)
+                )
         elif lr_input.ndim == 4:
             # (B, H, W, C) -> (B, C, H, W)
             tensor_input = (

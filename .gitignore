@@ -72,9 +72,13 @@ checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/baseline_exp001/
 !checkpoints/baseline_exp001/*
+!checkpoints/ensemble_v2/
+!checkpoints/ensemble_v2/*
 *.pt
 *.pth
 !checkpoints/baseline_exp001/*.pth
+!checkpoints/ensemble_v2/*.pt
+!checkpoints/ensemble_v2/*.pth
 *.onnx
 
 # Demo / runtime outputs & artifacts
