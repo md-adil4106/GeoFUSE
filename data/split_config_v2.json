@@ -1,0 +1,97 @@
+{
+  "split_version": "v2.0",
+  "created_at": "2026-09-16T17:15:00Z",
+  "description": "Spatially disjoint, boundary-constrained geographic train/validation split with zero spatial leakage and verifiable containment.",
+  "scene_metadata": {
+    "scene_id": "S2A_T43PGQ_20240227T052054_L2A",
+    "dimensions": {
+      "height": 512,
+      "width": 512,
+      "channels": 4
+    },
+    "bands": ["B02", "B03", "B04", "B08"],
+    "crs": "EPSG:32643",
+    "ground_sample_distance_m": 10.0
+  },
+  "partitioning_strategy": {
+    "method": "spatially block-separated bounding box containment",
+    "validation_zone": {
+      "name": "Southeast Quadrant",
+      "row_min": 256,
+      "row_max": 512,
+      "col_min": 256,
+      "col_max": 512,
+      "pixel_area": 65536
+    },
+    "training_zones": [
+      {
+        "name": "North Block (Northwest and Northeast)",
+        "row_min": 0,
+        "row_max": 256,
+        "col_min": 0,
+        "col_max": 512,
+        "pixel_area": 131072
+      },
+      {
+        "name": "Southwest Quadrant",
+        "row_min": 256,
+        "row_max": 512,
+        "col_min": 0,
+        "col_max": 256,
+        "pixel_area": 65536
+      }
+    ],
+    "patch_parameters": {
+      "patch_size_hr": 128,
+      "stride_train": 32,
+      "stride_val": 32,
+      "guard_buffer_pixels": 0
+    },
+    "partition_yields": {
+      "train_patches": 105,
+      "val_patches": 25,
+      "total_patches": 130,
+      "overlapping_patch_pairs": 0,
+      "overlapping_pixel_count": 0
+    },
+    "buffered_partition_yields_32px": {
+      "guard_buffer_pixels": 32,
+      "train_patches": 88,
+      "val_patches": 25,
+      "min_boundary_separation_pixels": 32,
+      "overlapping_patch_pairs": 0
+    }
+  },
+  "degradation_setup": {
+    "paradigm": "synthetic degrade-and-recover validation",
+    "scientific_integrity_notice": "Evaluations measure reconstruction of synthetically blurred, sub-sampled, and noisy tiles against pre-degradation Sentinel-2 L2A tiles. This does not represent independent physical high-resolution ground truth.",
+    "optical_psf_blur": {
+      "type": "Gaussian",
+      "kernel_size": 3,
+      "sigma": 0.5,
+      "physical_rationale": "Approximates the diffraction-limited optical point spread function of the Sentinel-2 MSI instrument prior to spatial detector sampling."
+    },
+    "spatial_subsampling": {
+      "method": "bicubic",
+      "scale_factor": 2,
+      "lr_patch_size": 64,
+      "hr_patch_size": 128,
+      "nominal_lr_gsd_m": 20.0,
+      "nominal_hr_gsd_m": 10.0
+    },
+    "radiometric_sensor_noise": {
+      "type": "additive Gaussian",
+      "std": 0.01,
+      "scale": "normalized surface reflectance [0.0, 1.0]",
+      "val_seed_offset": 100
+    }
+  },
+  "legacy_comparison": {
+    "legacy_split_version": "v1.0",
+    "defect_description": "Center-point based quadrant assignment caused 128x128 patches whose centers were outside the validation quadrant to extend up to 64 pixels inside the quadrant.",
+    "legacy_train_patches": 120,
+    "legacy_val_patches": 49,
+    "legacy_overlapping_train_patches": 51,
+    "legacy_leakage_percentage": 42.5
+  }
+}

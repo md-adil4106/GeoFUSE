@@ -44,6 +44,7 @@ def evaluate_baseline_run(
     output_csv: Optional[str] = None,
     output_jsonl: Optional[str] = None,
     require_gpu: bool = True,
+    split_mode: str = "v1",
 ) -> Dict[str, Any]:
     """Execute full evaluation over all held-out validation patches on GPU."""
     root = get_project_root()
@@ -118,6 +119,7 @@ def evaluate_baseline_run(
         split="val",
         val_quadrant=val_quadrant,
         seed=val_seed,
+        split_mode=split_mode,
     )
     num_patches = len(val_ds)
     print(f"Held-Out Val Patches  : {num_patches} (Quadrant: rows {val_quadrant[0]}-{val_quadrant[1]}, cols {val_quadrant[2]}-{val_quadrant[3]})")
@@ -354,6 +356,7 @@ def main() -> int:
     parser.add_argument("--output-csv", type=str, default=None, help="Output distribution CSV path")
     parser.add_argument("--output-jsonl", type=str, default=None, help="Output JSONL log path")
     parser.add_argument("--allow-cpu", action="store_true", help="Allow CPU fallback (default requires GPU)")
+    parser.add_argument("--split-mode", type=str, default="v1", choices=["v1", "v2"], help="Split mode ('v1' legacy or 'v2' leak-free)")
     args = parser.parse_args()
 
     try:
@@ -363,6 +366,7 @@ def main() -> int:
             output_csv=args.output_csv,
             output_jsonl=args.output_jsonl,
             require_gpu=not args.allow_cpu,
+            split_mode=args.split_mode,
         )
         return 0
     except Exception as e:
