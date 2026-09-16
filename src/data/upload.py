@@ -599,7 +599,8 @@ def load_uploaded_stack(
         if needs_scaling:
             stack = stack / 10000.0
 
-        # Physical reflectance non-negativity
+        # Physical reflectance non-negativity and finite numerical guard
+        stack = np.nan_to_num(stack, nan=0.0, posinf=1.5, neginf=0.0)
         stack = np.clip(stack, 0.0, 1.5)
 
         primary_ds = readers[0]

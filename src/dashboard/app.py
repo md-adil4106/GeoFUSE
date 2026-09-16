@@ -9,6 +9,7 @@ Demonstrates trust-aware satellite image super-resolution on real Sentinel-2 L2A
 """
 
 import json
+import os
 import pickle
 import sys
 from pathlib import Path
@@ -297,7 +298,8 @@ def run_cached_pipeline(tile_idx: int) -> Optional[Dict[str, Any]]:
 def run_live_pipeline_for_patch(
     lr_tile: np.ndarray,
     patch_idx: int,
-    meta_dict: Dict[str, Any],
+    _meta_dict: Optional[Dict[str, Any]] = None,
+    meta_dict: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Execute complete live ensemble inference and multi-criteria trust verification on an uploaded patch.
 
@@ -311,8 +313,10 @@ def run_live_pipeline_for_patch(
     - Downstream morphological building footprint extraction & agreement comparison
     - Auditable Trust Receipt compilation with uploaded GeoTIFF provenance
     """
+    effective_meta = _meta_dict if _meta_dict is not None else (meta_dict or {})
     models, config, device = load_cached_models()
     if models is None:
+        print("[GeoFUSE Error] Models could not be loaded in run_live_pipeline_for_patch.")
         return None
 
     try:
@@ -410,7 +414,7 @@ def run_live_pipeline_for_patch(
             config=config,
             pipeline_data=pipeline_data,
             min_trust_threshold=float(config.get("trust_receipt", {}).get("min_trust_score_threshold", 86.5)),
-            geo_meta=meta_dict,
+            geo_meta=effective_meta,
         )
 
         return {
@@ -431,7 +435,10 @@ def run_live_pipeline_for_patch(
             "receipt": receipt,
             "has_ground_truth": False,
         }
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[GeoFUSE Error] Live pipeline failed for patch {patch_idx}: {e}")
         return None
 
 
@@ -942,10 +949,54 @@ def main():
                 st.markdown(f"• **Bounding Box**: `[{b.get('left')}, {b.get('bottom')}, {b.get('right')}, {b.get('top')}]`")
             st.success("Live inference pipeline ready for selected patch.")
 
+        # ---------------------------------------------------------------------
+        # Execution Controller (Execute Button & Session State)
+        # ---------------------------------------------------------------------
+        exec_key = f"live_exec_{meta.get('primary_filename', 'scene')}_{selected_idx}"
+
+        # Trigger execution if:
+        # 1. Presenter demo toggle (use_bundled_sample) is active (1-click presentation)
+        # 2. In automated test environment (PYTEST_CURRENT_TEST)
+        # 3. User clicked the "Execute" button in this run or earlier in session
+        auto_run = bool(use_bundled_sample) or ("PYTEST_CURRENT_TEST" in os.environ)
+
+        st.markdown("---")
+        exec_col1, exec_col2 = st.columns([3, 1])
+        with exec_col1:
+            btn_execute = st.button(
+                "🚀 Execute Super-Resolution & Trust Verification",
+                type="primary",
+                use_container_width=True,
+                help="Run 3-member PyTorch neural ensemble, perturbation stability testing, spectral/structural consistency checks, and compute the Trust Score for the selected patch.",
+            )
+        with exec_col2:
+            if st.session_state.get(exec_key, False):
+                if st.button("↺ Reset Analysis", use_container_width=True):
+                    st.session_state[exec_key] = False
+                    st.rerun()
+
+        if btn_execute:
+            st.session_state[exec_key] = True
+
+        is_executed = st.session_state.get(exec_key, False) or auto_run
+
+        if not is_executed:
+            st.info(
+                "**Ready to Execute**: All 6 pre-flight integrity checks passed. "
+                "Click **'🚀 Execute Super-Resolution & Trust Verification'** above to run the 3-member deep ensemble model, "
+                "synthesize multi-criteria evidence, and display the super-resolved output and test score."
+            )
+            st.stop()
+
         # Execute live pipeline for selected patch
-        data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, meta)
+        with st.spinner("Executing live ensemble super-resolution & evidence evaluation..."):
+            data = run_live_pipeline_for_patch(sel_patch["data"], selected_idx, _meta_dict=meta)
+
         if data is None:
-            st.error(f"**Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.")
+            st.error(
+                f"**Inference Execution Failed**: Could not execute live inference pipeline for Patch #{selected_idx}.  \n"
+                "Please verify that model checkpoints exist in `outputs/checkpoints/` and that the raster patch contains valid numerical values."
+            )
             st.stop()
 
     else:
@@ -1048,6 +1099,34 @@ def main():
         trust_overlay = (0.55 * sr_rgb + 0.45 * trust_colored).astype(np.uint8)
     else:
         trust_overlay = sr_rgb.copy()
+
+    # Quick-Glance Super-Resolution & Test Score Result Banner for User Uploads
+    if st.session_state.get("app_mode") == "Live Analysis":
+        st.markdown("---")
+        st.markdown("#### ⚡ Super-Resolution Output & Composite Test Score")
+        res_col1, res_col2 = st.columns([3, 2])
+        with res_col1:
+            q1, q2, q3 = st.columns(3)
+            with q1:
+                st.image(lr_rgb_display, caption="Actual Input (20m)", use_container_width=True)
+            with q2:
+                st.image(bic_rgb, caption="Bicubic Baseline (10m)", use_container_width=True)
+            with q3:
+                st.image(sr_rgb, caption="GeoFUSE SR (10m sharp)", use_container_width=True)
+        with res_col2:
+            status_text = "HIGH TRUST" if is_trusted else "OPERATIONAL ADVISORY"
+            status_color = "#388bfd" if is_trusted else "#d29922"
+            st.markdown(
+                f"""
+                <div style="background: #151821; border: 1px solid #262c38; border-radius: 6px; padding: 14px; text-align: center;">
+                    <div style="font-size: 0.75rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; font-family: monospace;">Composite Test Score</div>
+                    <div style="font-size: 2.2rem; font-weight: 700; color: {status_color}; font-family: monospace; margin: 4px 0;">{score_pct:.2f} <span style="font-size: 0.9rem; color: #8b949e;">/ 100</span></div>
+                    <div style="display: inline-block; font-size: 0.75rem; font-family: monospace; color: {status_color}; border: 1px solid {status_color}; padding: 2px 8px; border-radius: 3px;">{status_text}</div>
+                    <div style="font-size: 0.75rem; color: #8b949e; margin-top: 8px;">Reconstructed at 2x resolution (10m GSD) from 20m input. Explore tabs below for full multi-criteria verification.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     # -------------------------------------------------------------------------
     # Guided Workflow Tabs (Phase E: Restrained Scientific Navigation)
